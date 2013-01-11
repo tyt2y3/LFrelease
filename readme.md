@@ -11,7 +11,7 @@ latest demo
 ### demo/milestone
 milestone builds
 ```
-2012June.html      2012may       2012Sep.html
+2012June.html      2012may       2012Sep.html      2013Jan.html
 2012June-min.html  2012Nov.html  2012Sep-min.html
 ```
 demo/milestone/2012may
