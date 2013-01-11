@@ -7,7 +7,7 @@ base url: [http://tyt2y3.github.com/LFrelease/](http://tyt2y3.github.com/LFrelea
 ### demo/
 latest demo
 ```
-demo3.html  demo3.js  milestone  time.html
+[demo3.html](http://tyt2y3.github.com/LFrelease/demo/demo3.html)  demo3.js  milestone  time.html
 ```
 ### demo/milestone
 milestone builds
