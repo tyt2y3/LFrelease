@@ -1,9 +1,9 @@
 # LF release
 The release channel for [F.LF](http://github.com/tyt2y3/F.LF).
 
-### What's in this channel
-[http://tyt2y3.github.com/LFrelease/](http://tyt2y3.github.com/LFrelease/)
+base url: [http://tyt2y3.github.com/LFrelease/](http://tyt2y3.github.com/LFrelease/)
 
+### What's in this channel
 ### demo/
 latest demo
 ```
