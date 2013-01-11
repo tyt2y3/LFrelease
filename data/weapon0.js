@@ -2,7 +2,7 @@ define({
 	"bmp": {
 		"file": [
 			{
-				"file(0-99)": "../sprite/weapon0.png",
+				"file(0-99)": "sprite/weapon0.png",
 				"w": 48,
 				"h": 48,
 				"row": 10,
@@ -1089,6 +1089,7 @@ define({
 				}
 			]
 		},
+
 
 		"34": {
 			"name": "on_hand",

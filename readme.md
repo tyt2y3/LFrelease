@@ -3,6 +3,22 @@ The release channel for [F.LF](http://github.com/tyt2y3/F.LF).
 
 # What's in this channel
 
+## demo/
+latest demo
+```
+demo3.html  demo3.js  milestone  time.html
+```
+## demo/milestone
+milestone builds
+```
+2012June.html      2012may       2012Sep.html
+2012June-min.html  2012Nov.html  2012Sep-min.html
+```
+demo/milestone/2012may
+```
+bandit_l.png  bandit_r.png  character.js  demo1.html  demo1.js  in1.html
+```
+
 ## data/
 LF2 data file converted to JSON via [data_file_converter](http://tyt2y3.github.com/LFrelease/tools/data_file_converter.html)
 ```

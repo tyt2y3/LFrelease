@@ -2,14 +2,14 @@ define({
 	"bmp": {
 		"file": [
 			{
-				"file": "../sprite/effect0.png",
+				"file": "sprite/effect0.png",
 				"w": 100,
 				"h": 75,
 				"row": 10,
 				"col": 1
 			},
 			{
-				"file": "../sprite/effect0.png",
+				"file": "sprite/effect0.png",
 				"w": 60,
 				"h": 70,
 				"row": 10,

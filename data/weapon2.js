@@ -2,7 +2,7 @@ define({
 	"bmp": {
 		"file": [
 			{
-				"file(0-99)": "../sprite/weapon2.png",
+				"file(0-99)": "sprite/weapon2.png",
 				"w": 48,
 				"h": 48,
 				"row": 10,

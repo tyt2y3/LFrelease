@@ -1,24 +1,1601 @@
-define({
+<head>
+<meta http-equiv='content-type' content='text/html; charset=UTF-8'>
+</head>
+
+<body>
+<textarea id='css' style='position:absolute; visibility:hidden; height:0px;'>
+.F_sprite
+{
+position:absolute;
+overflow:hidden;
+width:10px;
+height:10px;
+}
+.F_sprite_img
+{
+position:absolute;
+}
+.canvas
+{
+position:relative;
+width:650px;
+height:300px;
+border:1px solid #000;
+}
+.box
+{
+font-family:Arial,sans;
+width:40px; height:40px; background-color:#CCC; float:left; margin:2px 2px 2px 2px;
+border-radius: 3px;
+}
+</textarea>
+<div id='help' style='position:absolute; visibility:hidden;'>
+	<div class='box'>T<br /><span style='font-size:12px;'>attack</span></div>
+	<div class='box'>Y<br /><span style='font-size:12px;'>jump</span></div>
+	<div class='box' style='visibility:hidden;'></div>
+	<div class='box'>I</div>
+	<div style='clear:both'></div>
+	<div class='box' style='width:50px; visibility:hidden;'></div>
+	<div class='box'>H<br /><span style='font-size:12px;'>defend</span></div>
+	<div class='box'>J</div>
+	<div class='box'>K</div>
+	<div class='box'>L</div>
+	<div style='clear:both'></div>
+	Press these keys to control me!
+</div>
+<div id='canvas_of_demo3' class='canvas'></div>
+<script>
+F=new Object;
+F.embed_css = function (content)
+{
+	var head = document.getElementsByTagName('head')[0],
+	    style = document.createElement('style'),
+	    rules = document.createTextNode(content);
+
+	style.type = 'text/css';
+	if(style.styleSheet)
+	    style.styleSheet.cssText = rules.nodeValue;
+	else style.appendChild(rules);
+	head.appendChild(style);
+}
+F.embed_css(document.getElementById('css').value);
+
+//character in F.LF
+if( typeof F=='undefined') F=new Object;
+if( typeof F.LF=='undefined') F.LF=new Object;
+if( typeof F.LF.character=='undefined') //#ifndef
+{
+
+F.LF.character = function(con)
+{
+	//data file
+	var dat = bandit;
+	this.name=dat.bmp.name;
+
+	//---status-----------------------------------------------------
+	this.hp=100;
+	this.mp=100;
+	this.bdefend=70;
+	this.fall=70;
+
+	//the state variable
+	var state=0;
+	var wait=1; //when wait decreases to zero, an event happens
+	var next=999; //next frame
+
+	//frame
+	var framePN=0; //previous frame number
+	var frameN=0; //current frame number
+	var frame=dat.frame[0]; //current frame object
+
+	//---configurations---------------------------------------------
+
+	var W=dat.bmp.file0.w+1; //width, height of a frame
+	var H=dat.bmp.file0.h+1;
+
+	//sprite config
+	var sp_con=
+	{
+		canvas: document.getElementById('canvas_of_demo3'),
+		wh: {x:W,y:H},
+		img:
+		{
+			'l':'2012may/bandit_l.png',
+			'r':'2012may/bandit_r.png',
+		}
+	}
+
+	//animator config
+	var ani_con=
+	{
+		x:0,  y:0,   //top left margin of the frames
+		w:W, h:H,    //width, height of a frame
+		gx:10, gy:14,//define a gx*gy grid of frames
+		tar:null,    //target F.sprite, object not exist yet, specify later
+	};
+
+	//combo list
+	var combo_con = [
+		{ name:'left', seq:['left']},
+		{ name:'right', seq:['right']},
+		{ name:'def', seq:['def']},
+		{ name:'jump', seq:['jump']},
+		{ name:'att', seq:['att']},
+		{ name:'run', seq:['right','right']},
+		{ name:'run', seq:['left','left']},
+		{ name:'hit_Da', seq:['def','down','att']},
+		{ name:'hit_Fa', seq:['def','left','att']},
+		{ name:'hit_Fa', seq:['def','right','att']},
+		{ name:'hit_Ua', seq:['def','up','att']},
+		{ name:'hit_Dj', seq:['def','down','jump']},
+		{ name:'hit_Fj', seq:['def','left','jump']},
+		{ name:'hit_Fj', seq:['def','right','jump']},
+		{ name:'hit_Uj', seq:['def','up','jump']},
+		{ name:'hit_ja', seq:['def','jump','att']}
+	];
+	//combo detector config
+	var dec_con =
+	{
+		rp: {up:99,down:99,left:99,right:99,def:99,jump:99,att:99}, //the same key must repeat no more than X times
+		timeout:30, //time to clear buffer (approx. 1s in 30fps)
+		comboout:8, //the max time interval(in frames) between keys to make a combo
+		callback: combo_event, //callback function when combo detected
+		no_repeat_key: true //eliminate repeated key strokes by browser
+	}
+
+	function switch_dir_fun(e)
+	{
+		if( dir==='left' && e==='right')
+		{
+			dir='right';
+			sp.switch_img('r');
+		}
+		else if( dir==='right' && e==='left')
+		{
+			dir='left';
+			sp.switch_img('l');
+		}
+	}
+	var switch_dir=true;
+
+	function dirh()
+	{
+		return (dir==='left'?-1:1);
+	}
+
+	function dirv()
+	{
+		var d=0;
+		if( con.state.up)   d-=1;
+		if( con.state.down) d+=1;
+		return d;
+	}
+
+	//---set up-----------------------------------------------------
+	//sprite
+	var sp = new F.sprite(sp_con);
+	sp.x=100; sp.y=0; sp.z=100;
+	sp.vx=0; sp.vy=0; sp.vz=0;
+	sp.set_xy({x:sp.x, y:sp.y+sp.z});
+
+	//animator
+	ani_con.tar=sp; //specify the target F.sprite
+	var ani = new F.animator(ani_con,'base');
+
+	//direction switcher
+	var dir='right';
+
+	//controller
+	// con is a parameter
+
+	//combodec
+	var dec = new F.combodec(con, dec_con, combo_con);
+
+	//---internal functions-----------------------------------------
+
+	function frame_update() //special update done at every frame
+	{
+		//show frame
+		ani.set_frame(frame.pic);
+
+		//velocity
+		if( frame.dvx) sp.vx= dirh() * frame.dvx;
+		if( frame.dvz) sp.vz= dirv() * frame.dvz;
+		if( frame.dvy) sp.vy= frame.dvy;
+
+		//wait for an event
+		wait=frame.wait;
+		next=frame.next;
+
+		//set state
+		if(state !== frame.state)
+			state = frame.state;
+
+		//special update
+		var tar=fu[frame.state];
+		if( tar) tar();
+	}
+
+	function state_update() //update done at every TU (30fps)
+	{
+		var tar=su[frame.state];
+		if( tar) tar();
+
+		if( sp.y===0)
+		{	//friction
+			if( sp.vx>0) { sp.vx-=1; if( sp.vx<0) sp.vx=0;}
+			if( sp.vx<0) { sp.vx+=1; if( sp.vx>0) sp.vx=0;}
+			if( sp.vz>0) { sp.vz-=1; if( sp.vz<0) sp.vz=0;}
+			if( sp.vz<0) { sp.vz+=1; if( sp.vz>0) sp.vz=0;}
+		}
+
+		if( sp.y<0) //gravity
+			sp.vy+= 1.9;
+
+		//position
+		sp.x += sp.vx;
+		sp.z += sp.vz;
+		sp.y += sp.vy;
+		if( sp.y>0) sp.y=0;
+		sp.set_xy({x:sp.x, y:sp.y+sp.z});
+
+		if( sp.y===0 && sp.vy>0)
+		{//falling onto the ground
+			sp.vy=0;
+			sp.vx*=0.5; //half the speed
+			sp.vz*=0.5;
+			frame_trans(215);
+		}
+	}
+
+	var su= //update done at every TU (30fps)
+	{
+		'0':function() //standing
+		{
+			var dx=0, dz=0; //to resolve key conflicts
+			if( con.state.up)   dz -=1;
+			if( con.state.down) dz +=1;
+			if( con.state.left) dx -=1;
+			if( con.state.right)dx +=1;
+			if( dx || dz)
+				frame_trans(5);
+		},
+
+		'1':function() //walking
+		{
+			if(con.state.up)    sp.z-=dat.bmp.walking_speedz;
+			if(con.state.down)  sp.z+=dat.bmp.walking_speedz;
+			if(con.state.left)  sp.x-=dat.bmp.walking_speed;
+			if(con.state.right) sp.x+=dat.bmp.walking_speed;
+
+			var dx=0, dz=0; //to resolve key conflicts
+			if( con.state.up)   dz -=1;
+			if( con.state.down) dz +=1;
+			if( con.state.left) dx -=1;
+			if( con.state.right)dx +=1;
+			if( !dx && !dz)
+				frame_trans(999); //go back to standing
+		},
+
+		'2':function() //running
+		{
+			sp.x+= dirh()*dat.bmp.running_speed;
+			if(con.state.up)    sp.z-=dat.bmp.running_speedz;
+			if(con.state.down)  sp.z+=dat.bmp.running_speedz;
+		},
+
+		'4':function() //jump
+		{
+			if( frameN===212) //is jumping
+				if( con.state.att)
+				{
+					switch_dir=false;
+					frame_trans(80);
+				}
+		},
+
+		'15':function() //stop_running, crouch2, dash_attack
+		{
+			if( next===999 && wait===0) //leaving the current frame
+			{	//and going back to standing
+				if( switch_dir===false)
+				{
+					if(con.state.left) switch_dir_fun('left');
+					if(con.state.right) switch_dir_fun('right');
+					switch_dir=true; //re-enable switch dir
+				}
+			}
+		}
+	}
+
+	var fu= //special update done at every frame
+	{
+		da:{}, //data area
+		'1':function() //walking
+		{
+			fu.oscillate(5,8);
+			wait=dat.bmp.walking_frame_rate;
+		},
+		'2':function() //running
+		{
+			fu.oscillate(9,11);
+			wait=dat.bmp.running_frame_rate;
+		},
+		'3':function() //punch, jump_attack, ...
+		{
+			if( frameN===81) //jump_attack
+				next=212; //back to jump
+		},
+		'4':function() //jump
+		{
+			if( frameN===212 && framePN===211)
+			{	//start jumping
+				var dx = 0;
+				if( con.state.left)  dx-= 1;
+				if( con.state.right) dx+= 1;
+				sp.vx= dx * dat.bmp.jump_distance;
+				sp.vz= dirv() * dat.bmp.jump_distancez;
+				sp.vy= dat.bmp.jump_height; //upward force
+			}
+		},
+		'6':function() //rowing
+		{
+			if( frameN>=102 && frameN<=104)
+			{
+				sp.vx *= 1.4;
+				wait+=1;
+			}
+		},
+		'15':function() //stop_running, crouch2, dash_attack
+		{
+			if( frameN===218) //is stop_running
+			{
+				sp.vx = dirh()*(5+frame.dvx);
+				wait = Math.floor(wait*1.5);
+			}
+		},
+		oscillate:function(a,b) //oscillate between frame a and b
+		{
+			if( typeof fu.da.i==='undefined' || fu.da.i<a || fu.da.i>b)
+			{
+				fu.da.up=true;
+				fu.da.i=a+1;
+			}
+			if( fu.da.i<b && fu.da.up)
+				next=fu.da.i++;
+			else if( fu.da.i>a && !fu.da.up)
+				next=fu.da.i--;
+			if( fu.da.i==b) fu.da.up=false;
+			if( fu.da.i==a) fu.da.up=true;
+		}
+	}
+
+	var ce= //combo event
+	{
+		'0':function(K) //standing
+		{
+			switch(K)
+			{
+			case 'run':
+				switch_dir=false;
+				frame_trans(9);
+			break;
+			case 'def':
+				frame_trans(110);
+			break;
+			case 'jump':
+				frame_trans(210);
+			break;
+			case 'att':
+				frame_trans(Math.random()<0.5? 60:65);
+			break;
+			}
+		},
+		'1':function(K) //walking
+		{	//walking same as standing
+			return ce['0'](K);
+		},
+		'2':function(K) //running
+		{
+			switch(K)
+			{
+			case 'left': case 'right':
+				if(K!=dir)
+				{
+					frame_trans(218);
+				}
+			break;
+			case 'def':
+				switch_dir=false;
+				frame_trans(102);
+			break;
+			case 'jump':
+				switch_dir=true;
+				ce.goto_dash();
+			break;
+			}
+		},
+		'5':function(K) //dash
+		{
+			if( K==='att')
+			{
+				switch_dir=false;
+				frame_trans(90);
+			}
+			if( K==='left' || K==='right')
+			{
+				if( K!=dir)
+				{
+					if( dirh()==(sp.vx>0?1:-1))
+					{//turn back
+						if( frameN===213) frame_trans(214);
+						if( frameN===216) frame_trans(217);
+					}
+					else
+					{//turn to front
+						if( frameN===214) frame_trans(213);
+						if( frameN===217) frame_trans(216);
+					}
+				}
+			}
+		},
+		'15':function(K) //stop_running, crouch2, dash attack
+		{
+			if( framePN===212) //previous is jump
+			{
+				if( K==='def')
+					frame_trans(102);
+				if( K==='jump')
+					if( con.state.left || con.state.right)
+						ce.goto_dash();
+					else
+					{
+						wait+=5;
+						next=210;
+					}
+			}
+		},
+		'goto_dash':function()
+		{
+			frame_trans(213);
+			sp.vx= dirh() * dat.bmp.dash_distance;
+			sp.vz= dirv() * dat.bmp.dash_distancez;
+			sp.vy= dat.bmp.dash_height;
+		}
+	}
+
+	function combo_event(kobj)
+	{
+		var K=kobj.name;
+
+		var tar=ce[frame.state];
+		if( tar) tar(K);
+
+		if( K=='left' || K=='right')
+			if( switch_dir)
+				switch_dir_fun(K);
+	}
+
+	function event()
+	{
+		if( next===0)
+		{
+			//do nothing
+		}
+		else
+		{
+			frame_trans(next);
+		}
+	}
+
+	function frame_trans(F)
+	{
+		if( F===999)
+			F=0;
+		framePN=frameN;
+		frameN=F;
+		frame=dat.frame[F];
+		frame_update();
+	}
+
+	//---external functions-----------------------------------------
+	this.frame=function()
+	{
+		state_update();
+		dec.frame();
+
+		if( wait===0)
+			event();
+		wait--;
+	}
+	this.switch_controller=function(C)
+	{
+		con = C;
+		dec = new F.combodec(con, dec_con, combo_con);
+	}
+}
+
+} //#endif
+/*Project F
+ */
+if( typeof F=='undefined') F=new Object;
+if( typeof F.css=='undefined') //#ifndef
+{
+
+//
+//javascript-----------------
+//
+/* //deprecated in favour of the use of head.js
+F.js = function (filename)
+{
+	var head = document.getElementsByTagName('head')[0];
+	var script = document.createElement('script');
+	script.src = filename;
+	script.type = 'text/javascript';
+	head.appendChild(script);
+}*/
+F.css = function (filename)
+{
+	var head = document.getElementsByTagName('head')[0];
+	var link = document.createElement('link');
+	link.href = filename;
+	link.rel = 'stylesheet';
+	link.type = 'text/css';
+	head.appendChild(link);
+}
+F.double_delegate = function (function1, function2)
+{
+	// http://roberthahn.ca/articles/2007/02/02/how-to-use-window-onload-the-right-way/
+	return function() {
+	if (function1)
+	    function1.apply(this,Array.prototype.slice.call(arguments));
+	if (function2)
+	    function2.apply(this,Array.prototype.slice.call(arguments));
+	}
+}
+
+//
+//data structure------------
+//
+F.arr_search = function ( arr,
+		fc_criteria,  //function to return true when an accepted element is passed in
+		fc_replace,   //[optional] function to return a replacement value when original value is passed in
+		search_all)   //[optional] if true, will search through entire array before returning the list of index
+				//otherwise, will return immediately at the first accepted element
+{
+	var found_list=new Array();
+	//for ( var i=0; i<arr.length; i++)
+	for ( var i in arr)
+	{
+		if ( fc_criteria(arr[i],i))
+		{
+			if ( fc_replace) {
+				arr[i] = fc_replace(arr[i]);
+			}
+			if ( !search_all) {
+				return i;
+			} else {
+				found_list.push(i);
+			}
+		}
+	}
+	if ( search_all) {
+		return found_list;
+	} else {
+		return -1;
+	}
+}
+
+F.push_unique = function ( array, element)
+{
+	var res = arr_search( array, function(E){return E==element} );
+	if (res == -1) array.push(element);
+}
+
+F.extend_object = function (obj1, obj2) //extend obj1 with all members of obj2
+{
+	for (var p in obj2)
+	{
+		if ( typeof obj2[p]=='object' )
+		{
+			obj1[p] = F.extend_object((obj1[p]?obj1[p]:{}), obj2[p]);
+		} else
+		{
+			obj1[p] = obj2[p];
+		}
+	}
+	return obj1;
+	// http://stackoverflow.com/questions/122102/what-is-the-most-efficient-way-to-clone-a-javascript-object
+}
+
+F.to_text = function ( //convert a JSON object to into text
+			//	usage: F.to_text(obj,'obj');
+	obj2, name,	//object and its name
+	sep,		//[optional] separator, default as '\n'
+	pretext,	//[used in recursion only] set it to null
+	filter,		//[optional] a filter function(p,P) passing in name p and object P
+			//	return 1 to completely hide the attribute,
+			//	OR return a string to be shown
+	TTL		//[optional] time-to-live to prevent infinite looping
+)
+{
+	if( TTL==0) return '';
+	if( !TTL) TTL=30;
+	if( !sep) sep='\n';
+	if( !pretext) pretext='';
+
+	var str = pretext+ name +':'+sep;
+	str+= pretext+ '{';
+	var cc=0;
+	for (var p in obj2)
+	{
+		var fil = filter && filter(p,obj2[p]);
+		if( fil==1)
+		{
+			//do nothing
+		}
+		else if( typeof fil=='string')
+		{
+			str += (cc?',':'')+sep+pretext+'\t'+"'"+p+"'"+': '+fil;
+		}
+		else
+		{
+			if( obj2[p].constructor==Object )
+			{
+				str += (cc?',':'')+sep+F.to_text(obj2[p],p,sep,pretext+'\t',filter,TTL-1);
+			} else
+			{
+				str += (cc?',':'')+sep+pretext+'\t'+"'"+p+"'"+': ';
+				if( typeof obj2[p]=='string')
+					str += "'";
+				str += obj2[p];
+				if( typeof obj2[p]=='string')
+					str += "'";
+			}
+		}
+		cc=1;
+	}
+	str+= sep+pretext+ '}';
+	return str;
+}
+
+} //#endif
+
+if( typeof F=='undefined') F=new Object;
+if( typeof F.add=='undefined') //#ifndef
+{
+
+//
+//math helper functions-----
+//
+F.inbetween = function (x,L,R) //x in between L and R
+{
+	var l,r;
+	if ( L<=R)
+	{	l=L;
+		r=R;
+	}
+	else
+	{	l=R;
+		r=L;
+	}
+	return x>=l && x<=r;
+}
+F.round_d2 = function (I)
+{
+	return Math.round(I*100)/100;
+}
+F.negligible = function (M)
+{
+	return -0.00000001 < M && M < 0.00000001;
+}
+
+//
+//curves--------------------
+//
+F.bezier2 = function (A,C,B,steps) //degree 2 bezier
+{
+	var curve = new Array();
+	for( var i=0; i<steps; i++)
+	{
+		curve.push(F.bezier2_step(A,C,B, i,steps));
+	}
+	curve.push(B);
+	return curve;
+}
+F.bezier2_step = function (A,C,B, i,steps)
+{
+	var P={x:0,y:0};
+	P.x = getstep(getstep(A.x, C.x, i, steps), getstep(C.x, B.x, i, steps), i, steps);
+	P.y = getstep(getstep(A.y, C.y, i, steps), getstep(C.y, B.y, i, steps), i, steps);
+	return P;
+
+	function getstep(x1, x2, stepcount, numofsteps)
+	{
+	      return ((numofsteps - stepcount) * x1 + stepcount * x2) / numofsteps;
+	}
+}
+
+//
+//vector math--------------
+//
+F.add = function (A,B) //A+B
+{
+	return {x:A.x+B.x, y:A.y+B.y};
+}
+F.sub = function (A,B) //A-B
+{
+	return {x:A.x-B.x, y:A.y-B.y};
+}
+F.sca = function (A,t) //scale
+{
+	return {x:A.x*t, y:A.y*t};
+}
+F.length = function (A)
+{
+	return Math.sqrt( A.x*A.x + A.y*A.y );
+}
+F.distance = function (p1,p2)
+{
+	return Math.sqrt( (p2.x-p1.x)*(p2.x-p1.x) + (p2.y-p1.y)*(p2.y-p1.y) );
+}
+F.negative = function (A)
+{
+	return {x:-A.x, y:-A.y};
+}
+F.normalize = function (A)
+{
+	return F.sca(A, 1/F.length(A));
+}
+F.perpen = function (A) //perpendicular: anti-clockwise 90 degrees
+{
+	return {x:-A.y, y:A.x};
+}
+F.signed_area = function (p1,p2,p3)
+{
+	var D = (p2.x-p1.x)*(p3.y-p1.y)-(p3.x-p1.x)*(p2.y-p1.y);
+	return D;
+}
+F.intersect = function ( P1,P2, //line 1
+			P3,P4)  //line 2
+{
+	//line-line intersection
+	//	return the intersection point of P1-P2 with P3-P4
+	var mua,mub;
+	var denom,numera,numerb;
+
+	denom  = (P4.y-P3.y) * (P2.x-P1.x) - (P4.x-P3.x) * (P2.y-P1.y);
+	numera = (P4.x-P3.x) * (P1.y-P3.y) - (P4.y-P3.y) * (P1.x-P3.x);
+	numerb = (P2.x-P1.x) * (P1.y-P3.y) - (P2.y-P1.y) * (P1.x-P3.x);
+
+	if ( negligible(numera) && negligible(numerb) && negligible(denom)) {
+		//meaning the lines coincide
+		return { x: (P1.x + P2.x) * 0.5,
+			y:  (P1.y + P2.y) * 0.5 };
+	}
+
+	if ( negligible(denom)) {
+		//meaning lines are parallel
+		return { x:0, y:0};
+	}
+
+	mua = numera / denom;
+	mub = numerb / denom;
+
+	return { x: P1.x + mua * (P2.x - P1.x),
+		y:  P1.y + mua * (P2.y - P1.y) };
+	//http://paulbourke.net/geometry/lineline2d/
+}
+
+} //#endif
+
+if( typeof F=='undefined') F=new Object;
+if( typeof F.states=='undefined') //#ifndef
+{
+
+F.state_list=[];
+F.states = function (state_def)
+{
+	//[--constructor
+	//	no private member
+	//	this.state can be altered dynamically
+	this.state=state_def;
+
+	this.state.name='root'; //build an accessible tree
+	this.propagate_down(999,function(state,name,superstate){
+		state.name=name;
+		state.superstate=superstate;
+	});
+
+	this.evlay=new Array(20); //the array of delayed events
+	for( var i=0; i<this.evlay.length; i++)
+		this.evlay[i]={i:-1};
+
+	this.cur=[]; //cur defines the path of current state,
+			//e.g.   cur=['state1','state1_1','state1_1_1'];
+			//represents   state1-> state1_1-> state1_1_1(cur is here)
+	this.cur_name='root';
+	this.cur_state=this.state; //a reference to the current state in state_def
+	this.chain_event(true,this.cur,1,'entry',true,null);
+
+	F.state_list.push(this); //the list of state objects
+
+	this.log_enable=false;   //not log by default
+	this.log_filter=null;	//a function to return true to not log an item
+	this.log_size=100;
+	this.log=new Array(this.log_size); //log state transitions in form of
+		//[
+		// {type:'t', from:path, to:path},
+		// {type:'c', event:event, target:state, return:result},
+		//];
+	//--]
+}
+
+F.states.prototype.propagate_down=function(level,fun,node)
+{
+	if( level<=0)
+		return;
+
+	if(!node)
+		node=this.state;
+
+	for( var I in node)
+	{
+		if( this.valid_substate(I))
+		{
+			fun(node[I],I,node);
+			this.propagate_down(level-1,fun,node[I]);
+		}
+	}
+}
+
+F.states.prototype.propagate_up=function(level,fun,node)
+{
+	if(!node)
+		node=this.cur_state;
+
+	while(1)
+	{
+		if(level-- <= 0)
+			break;
+
+		fun(node);
+
+		if(node.superstate)
+			node = node.superstate;
+		else
+			break;
+	}
+}
+
+F.states.prototype.chain_event=function(allow_transition,chain,TTL,event,down,sub, arg)
+{
+	var result={ result:null, absorbed:false};
+
+	if( down)
+	{
+		var i=0;
+		if( sub) i=sub;
+		var I = this.state_at(chain.slice(0,i+1));
+	}
+	else
+	{
+		var i=chain.length-1;
+		var I = this.state_at(chain);
+	}
+	for(;;)
+	{
+		result = this.execute_event(event,I,arg);
+
+		if( result.absorbed)
+		{
+			if( allow_transition && result.result)
+				this.to(result.result);
+			if( --TTL <= 0)
+				break;
+		}
+
+		if( down)
+		{	//move down along tree
+			if( i>=chain.length-1) break;
+			if( I[chain[i+1]])
+				I=I[chain[i+1]];
+			else
+				break;
+			i++;
+		}
+		else
+		{	//move up
+			I=I.superstate;
+			if( i<=0) break;
+			if( sub && i<=sub) break;
+			i--;
+		}
+	}
+	return result; //return the most recent result
+}
+
+F.states.prototype.execute_event=function(event,state,arg)
+{
+	if( !arg)
+		arg=[];
+	var res={ result:null, absorbed:false};
+	if( state.event)
+	{
+		var tar = state.event[event];
+		if( tar)
+		{
+			res.absorbed=true;
+			if( tar.prototype)
+				//tar is a function object
+				res.result = tar.apply(state, [this,event].concat(arg)); //call event function
+			else    //tar is a string
+				res.result = tar;
+		}
+	}
+
+	if( this.log_enable)
+	{	//logging
+		var L = {type:'c', event:event, target:state.name, 'return':res};
+		if( !this.log_filter || !this.log_filter(L))
+		{
+			this.log.push(L);
+			this.log.shift();
+		}
+	}
+
+	return res;
+}
+
+F.states.prototype.event=function(event/*,arguments,,,*/)
+{
+	if( this.valid_event(event))
+	{
+		var chain=this.cur;
+		this.chain_event(true,chain,1,event,false,null, Array.prototype.slice.call(arguments,1));
+	}
+
+	for( var I=0; I<this.evlay.length; I++)
+	{
+		if( this.evlay[I].frame == event)
+		{
+			if( this.evlay[I].i > -1)
+				this.evlay[I].i--;
+			if( this.evlay[I].i == 0)
+				this.event.apply(this, this.evlay[I].arg); //fire a delayed event
+		}
+	}
+	/* TODO: return true if state transition happened*/
+}
+
+F.states.prototype.event_delay=function(event,delay,frame/*,arguments,,,*/) //fire an event 'event' after 'delay' number of 'frame' events
+{
+	if( !this.valid_event(event))
+		return;
+
+	var res = F.arr_search( this.evlay, function(E){return E.i<=0;} );
+	if( res == -1)
+	{	//expand the array if all slots are full
+		this.evlay.push();
+		res = this.evlay.length-1;
+	}
+	this.evlay[res].event = event;
+	this.evlay[res].i = delay;
+	this.evlay[res].frame = frame;
+	this.evlay[res].arg = [event].concat(Array.prototype.slice.call(arguments,3)); //preserve arguments
+}
+
+F.states.prototype.consult=function(consultant,
+			state //[optional] state name
+			/*,arguments,,,*/) //[optional]
+{
+	if( !this.valid_event(consultant))
+		return null;
+	var chain;
+	if( !state)
+		chain=this.cur;
+	else
+		chain=this.search(state);
+	var result = this.chain_event(false,chain,1,consultant,false,null, Array.prototype.slice.call(arguments,2));
+	return result.result;
+}
+
+F.states.prototype.state_at=function(A) //return the state object of path array A
+{
+	var obj=this.state;
+	for( var i=0; i<A.length; i++)
+	{
+		obj=obj[A[i]];
+	}
+	return obj;
+}
+
+F.states.prototype.search=function(A, //search for the path of state A
+				node) //[optional] under node
+				//return an Array representing path
+{
+	var path=new Array();
+	if( node)
+		path.push(node.name);
+	else
+	{	//if not specified, search in root
+		node=this.state;
+	}
+
+	if( A=='root')
+	{
+		return [];
+	}
+	else if( node[A])
+	{
+		path.push(A);
+		return path;
+	}
+	else
+	{
+		for( var I in node)
+		{
+			if( this.valid_substate(I))
+			{
+				var subsearch = this.search(A, node[I], I);
+				if( subsearch)
+					return path.concat(subsearch);
+			}
+		}
+		return null;
+	}
+}
+
+F.states.prototype.valid_substate=function(S)
+{
+	return !(	S==null    ||
+			S=='event' ||
+			S=='name'  ||
+			S=='data'  ||
+			S=='superstate'||
+		0);
+}
+
+F.states.prototype.valid_event=function(E)
+{
+	return !(	E==null    ||
+			E=='entry' ||
+			E=='exit'  ||
+		0);
+}
+
+F.states.prototype.to=function(target_name)
+{
+	var prev=this.cur_state;
+	var A=this.cur;
+	var B=this.search(target_name);
+	if(!B)
+		return;
+	var a=0, b=0;
+	var target=B;
+	var target_state=this.state_at(target);
+
+	for( var ai=0,bi=0; ai<A.length && bi<B.length; ai++, bi++)
+	{
+		if( A[ai]===B[bi])
+		{
+			a++; b++;
+		}
+		else
+			break;
+	}
+
+	this.chain_event(false,A,999,'exit',false,a, [target_state]);
+		if( this.log_enable)
+		{	//logging
+			var L = {type:'t', from:A, to:B};
+			if( !this.log_filter || !this.log_filter(L))
+			{
+				this.log.push(L);
+				this.log.shift();
+			}
+		}
+	this.chain_event(false,B,999,'entry',true,b, [prev]);
+
+	this.cur=target;
+	this.cur_name=target_name;
+	this.cur_state=target_state;
+}
+
+F.states.prototype.show_log=function(
+	filter //[optional] return true to hide an item
+){
+	var str='(lastest at top)\n';
+	var L=this.log;
+	for( var i=L.length-1; i>=0; i--)
+	{
+		if( filter && filter(L[i]))
+				continue;
+		if( L[i].type=='t')
+			str+= 'transition from '+L[i].from+' to '+L[i].to+'\n';
+		else
+		{
+			str+= "call '"+L[i].event+"' of "+L[i].target+',';
+			if( !L[i]['return'].absorbed)
+				str+= ' not absorbed\n';
+			else
+				str+= ' returning '+L[i]['return'].result+'\n';
+		}
+	}
+	return str;
+}
+
+} //#endif
+
+//sprite system
+/*	display and control sprites on page using <div> tag
+ */
+/*	sample config for F_sprite
+	{
+		canvas: canvas,   //canvas *object*
+		wh: {x:100,y:100},// width and height
+		img:              //image list
+		{
+			'tag name':'image path',,,  //the first image is visible
+		},
+	}
+ */
+/*	require: style.css
+ */
+
+if( typeof F=='undefined') F=new Object;
+if( typeof F.sprite=='undefined') //#ifndef
+{
+
+F.sp_count=0; //sprite count
+F.sprite = function (config)
+{
+	//constructor
+	//	no private member
+	//	config is one time only and should be dumped after constructor returns
+	this.ID=F.sp_count;
+	F.sp_count++;
+
+	this.el = document.createElement('div');
+	this.el.setAttribute('class','F_sprite');
+	this.el.id='sp'+this.ID;
+	config.canvas.appendChild(this.el);
+
+	this.img={};
+	this.cur_img=null;
+
+	this.set_wh(config.wh);
+	for ( var I in config.img)
+	{
+		this.add_img(config.img[I], I);
+	}
+}
+F.sprite.prototype.set_wh=function(P)
+{
+	this.el.style.width=P.x+'px';
+	this.el.style.height=P.y+'px';
+}
+F.sprite.prototype.set_xy=function(P)
+{
+	this.el.style.left=P.x+'px';
+	this.el.style.top=P.y+'px';
+}
+F.sprite.prototype.add_img=function(imgpath,name)
+{
+	var im = document.createElement('img');
+	im.setAttribute('class','F_sprite_img');
+	im.src=imgpath;
+	this.el.appendChild(im);
+
+	this.img[name]=im;
+	this.switch_img(name);
+	return im;
+}
+F.sprite.prototype.switch_img=function(name)
+{
+	var left,top;
+	for ( var I in this.img)
+	{
+		if( this.img[I].style.visibility=='visible')
+		{
+			left=this.img[I].style.left;
+			top =this.img[I].style.top;
+			break;
+		}
+	}
+	for ( var I in this.img)
+	{
+		if( I==name)
+		{
+			this.img[I].style.left=left;
+			this.img[I].style.top=top;
+			this.img[I].style.visibility='visible';
+		}
+		else
+		{
+			this.img[I].style.visibility='hidden';
+		}
+	}
+	this.cur_img=name;
+}
+F.sprite.prototype.delete=function()
+{
+	this.el.parentNode.removeChild(this.el);
+}
+
+//sprite animator
+/*	animate sprites
+ */
+/*	sample config for F_animator
+	{
+	x:0,y:0,     //top left margin of the frames
+	w:100, h:100,//width, height of a frame
+	gx:4,gy:4,   //define a gx*gy grid of frames
+	tar:         //target F_sprite
+	ani:         //animation sequence:
+	   null,     //if undefined or null, loop through top left to lower right, row by row
+	   [0,1,2,1,0],//use custom frame sequence
+	graph:       //graph:
+	   [[0,1],   //	a 2d array gx*gy sized
+	    [2,3]]   //		to store custom data for each frame
+	}
+ */
+F.animator=function (config)
+{
+	//constructor
+	//	no private member
+	//	multiple animator reference to the same config, except tar
+	this.config=config;
+	this.target=config.tar;
+	this.I=0;//current frame
+}
+F.animator.prototype.next_frame=function() //turn to the next frame, return the index of the frame just shown
+{
+	var c=this.config;
+	this.I++;
+	if (!c.ani)
+	{
+		if ( this.I==c.gx*c.gy)
+		{
+			this.I=0;
+		}
+		this.show_frame(this.I);
+	}
+	else
+	{
+		var fi=c.ani[this.I];
+		if ( this.I==c.ani.length)
+		{
+			this.I=0; fi=c.ani[0];
+		}
+		this.show_frame(fi);
+	}
+	return this.I;
+}
+F.animator.prototype.set_frame=function(i)
+{
+	this.I=i;
+	this.show_frame(i);
+}
+F.animator.prototype.show_frame=function(i)
+{
+	var c=this.config;
+	this.target.set_wh({x:c.w, y:c.h});
+	this.target.img[this.target.cur_img].style.left= -((i%c.gx)*c.w+c.x) +'px';
+	this.target.img[this.target.cur_img].style.top = -((Math.floor(i/c.gx))*c.h+c.y) +'px';
+}
+F.animator.prototype.get_at=function(i) //get the content of the graph at frame i
+{	//by default at the current frame
+	if( !i) i=this.I;
+	var c=this.config;
+	return c.graph[(i%c.gx)][(Math.floor(i/c.gx))];
+}
+
+//animator set
+/*	a helper function to constructor a set of animators
+	animator set is not a class. do NOT `var ani = new F.animator_set()` instead `var ani = F.animator_set()`
+ */
+/*	example set_config
+	{
+		'base': //default parameters, must be specified as base when calling F.animator_set(set_config,*base*)
+		{
+			x:0,y:0,     //top left margin of the frames
+			w:L, h:L,    //width, height of a frame
+			gx:4,gy:1,   //define a gx*gy grid of frames
+			tar:null,    //target F.sprite
+		},
+
+		'standing':
+		{	//change only values you want to
+			x:0,y:0,     //top left margin of the frames
+			gx:4,gy:1,   //define a gx*gy grid of frames
+		},,,
+	}
+ */
+F.animator_set = function(set_config, base)
+{
+	if(!set_config)
+		return null;
+	var A=new Object;
+
+	for( var I in set_config)
+	{
+		if( base) if( I==base)
+			continue;
+
+		if( base) if( set_config[base])
+		{
+			for( var J in set_config[base])
+				set_config[I][J] = set_config[base][J];
+		}
+
+		A[I]=new F.animator(set_config[I]);
+	}
+	return A;
+}
+
+} //#endif
+
+//keyboard controller system
+/*	maintains a table of key states
+ */
+/*	require: F.js
+ */
+
+if( typeof F=='undefined') F=new Object;
+if( typeof F.master_controller=='undefined') //#ifndef
+{
+
+F.keydown = function(e)
+{
+	return F.master_controller.key(e,1);
+}
+F.keyup = function(e)
+{
+	return F.master_controller.key(e,0);
+}
+
+F.master_controller = (function()
+{
+	window.onkeydown = F.double_delegate(window.onkeydown, F.keydown);
+	window.onkeyup   = F.double_delegate(window.onkeydown, F.keyup);
+
+	var mas = new Object;
+	mas.child = new Array();
+	mas.key = function(e,down)
+	{
+		if (!e) e = window.event;
+		for (var I in this.child)
+		{
+			if ( this.child[I].key(e,down))
+				break;//if one controller catches a key, the next controller will never receive an event
+		}
+	}
+	return mas;
+}());
+
+//keyboard controller
+/*	sample config for F.controller (control keys)
+	{
+		up:'h', down:'n', left:'b', 'control name':'control key',,,
+	}
+	-each control key must be an alphabet
+	-F.controller doesnt care the name of each control
+*/
+/*	on the other hand, there can be other controllers with compatible definition and behavior,
+	(e.g. AI controller, network player controller, record playback controller)
+	-has the member variables `state`, `config`, `child`
+	-has the method `clear_states`
+	-behavior: call the `key` method of every member of `child` when keys arrive
+ */
+F.controller = function (config)
+{
+	this.state={};
+	this.config=config;
+	this.child=new Array(); //child system that has the method key('control name',down)
+
+	this.key=function(e,down)
+	{
+		var caught=0;
+		for(var I in this.config)
+		{
+			if ( F.keyname_to_keycode(this.config[I])==e.keyCode)
+			{
+				if( this.child)
+					for(var J in this.child)
+						this.child[J].key(I,down);
+
+				this.state[I]=down;
+				caught=1;
+			}
+		}
+		return caught;
+	}
+
+	this.clear_states=function()
+	{
+		for(var I in this.config)
+			this.state[I]=0;
+	}
+
+	//[--constructor
+	F.master_controller.child.push(this);
+	this.clear_states();
+	//--]
+}
+
+F.keyname_to_keycode=function(A)
+{
+	if( A.length==1)
+	{
+		//a-z only
+		var a=A.charCodeAt(0);
+		if ( (a>='a'.charCodeAt(0) && a<='z'.charCodeAt(0)) || (a>='A'.charCodeAt(0) && a<='Z'.charCodeAt(0)) )
+		{
+			A=A.toLowerCase();
+			return code = A.charCodeAt(0) - 'a'.charCodeAt(0) + 65;
+		}
+
+		if (a>='0'.charCodeAt(0) && a<='9'.charCodeAt(0))
+		{
+			return code = A.charCodeAt(0) - '0'.charCodeAt(0) + 48;
+		}
+	}
+
+	//TODO: other keys not supported
+	//	for a good list, see controller1.html
+}
+
+// http://www.quirksmode.org/js/keys.html
+// http://unixpapa.com/js/key.html
+} //endif
+
+//require controller.js
+
+//combo detection system
+/*	maintains a clean sequence of pressed keys
+	  and fire event when combo detected
+ */
+/*	no requirment
+ */
+/*	sample config for F_combodec
+	{
+		rp:     //[optional] max repeat count of each key, unlimited if not stated
+		timeout://time before clearing the sequence buffer in terms of frames
+		comboout: //the max time interval between keys to make a combo
+		callback: //callback function when combo detected
+		no_repeat_key: true //eliminate repeated key strokes by browser, only works in firefox and chrome
+	};
+	var combo = [
+		{
+			name: 'blast ball',	//combo name
+			seq:  ['def','right','att'], //array of key sequence
+			interrupt: true, //[optional] if true, will prevent other combo extending the current combo
+		},,,
+	];
+*/
+
+if( typeof F=='undefined') F=new Object;
+if( typeof F.combodec=='undefined') //#ifndef
+{
+
+F.combodec = function (controller, config, combo)
+{
+	//constructor
+	//	no private member
+	//	be careful since multiple animator reference to the same config, except callback
+	var framec=1;
+	var outframe=0;
+	var outcombo=0;
+	this.con=controller;
+	this.seq=new Array();
+	this.config=config;
+	this.callback=config.callback;
+	this.combo=combo;
+
+	this.con.child.push(this);
+	//
+	this.key=function(K, down)
+	{
+		if(!down)
+			return;
+
+		var seq=this.seq;
+
+		var push=true;
+		if( this.config.rp)
+		{	//detect repeated keys
+			for (var i=seq.length-1, cc=1; i>=0 && seq[i]==K; i--,cc++)
+				if( cc>=this.config.rp[K])
+					push=false;
+		}
+
+		if( this.config.no_repeat_key)
+		{
+			if( this.con.state[K])
+				push=false;
+		}
+
+		outframe=framec+this.config.timeout;
+		outcombo=framec+this.config.comboout;
+
+		if( push)
+			seq.push(K);
+
+		if ( this.combo && push)
+		{	//detect combo
+			var C = this.combo;
+			for (var i in C)
+			{
+				var detected=true;
+				for (var j=seq.length-C[i].seq.length, k=0; j<seq.length; j++,k++)
+				{
+					if( C[i].seq[k] != seq[j])
+					{
+						detected=false;
+						break;
+					}
+				}
+				if( detected)
+				{
+					this.callback(C[i]);
+					if( C[i].interrupt)
+						this.seq.push('_');
+				}
+			}
+		}
+	}
+
+	this.clear_seq=function()
+	{
+		this.seq.length=0;
+	}
+
+	this.frame=function()
+	{
+		if( framec==outframe)
+			this.clear_seq();
+		if( framec==outcombo)
+			this.seq.push('_');
+		framec++;
+	}
+}
+
+} //#endif
+
+bandit={
 	"bmp": {
 		"name": "Bandit",
 		"head": "sprite\\sys\\bandit_f.bmp",
 		"small": "sprite\\sys\\bandit_s.bmp",
-		"file": [
-			{
-				"file(0-69)": "sprite/bandit_0.png",
-				"w": 79,
-				"h": 79,
-				"row": 10,
-				"col": 7
-			},
-			{
-				"file(70-139)": "sprite/bandit_1.png",
-				"w": 79,
-				"h": 79,
-				"row": 10,
-				"col": 7
-			}
-		],
+		"file0": {
+			"file(0-69)": "sprite\\sys\\bandit_0.bmp",
+			"w": 79,
+			"h": 79,
+			"row": 10,
+			"col": 7
+		},
+		"file1": {
+			"file(70-139)": "sprite\\sys\\bandit_1.bmp",
+			"w": 79,
+			"h": 79,
+			"row": 10,
+			"col": 7
+		},
+		"file2": {
+			"file(140-209)": "sprite\\sys\\bandit_0b.bmp",
+			"w": 79,
+			"h": 79,
+			"row": 10,
+			"col": 7
+		},
+		"file3": {
+			"file(210-279)": "sprite\\sys\\bandit_1b.bmp",
+			"w": 79,
+			"h": 79,
+			"row": 10,
+			"col": 7
+		},
 		"walking_frame_rate": 3,
 		"walking_speed": 4,
 		"walking_speedz": 2,
@@ -222,14 +1799,8 @@ define({
 				"y": 16,
 				"w": 25,
 				"h": 65,
-				"catchingact": [
-					120,
-					120
-				],
-				"caughtact": [
-					130,
-					130
-				]
+				"catchingact": "120 120",
+				"caughtact": "130 130"
 			},
 			"bdy": {
 				"kind": 0,
@@ -274,14 +1845,8 @@ define({
 				"y": 16,
 				"w": 25,
 				"h": 65,
-				"catchingact": [
-					120,
-					120
-				],
-				"caughtact": [
-					130,
-					130
-				]
+				"catchingact": "120 120",
+				"caughtact": "130 130"
 			},
 			"bdy": {
 				"kind": 0,
@@ -326,14 +1891,8 @@ define({
 				"y": 16,
 				"w": 25,
 				"h": 65,
-				"catchingact": [
-					120,
-					120
-				],
-				"caughtact": [
-					130,
-					130
-				]
+				"catchingact": "120 120",
+				"caughtact": "130 130"
 			},
 			"bdy": {
 				"kind": 0,
@@ -378,14 +1937,8 @@ define({
 				"y": 16,
 				"w": 25,
 				"h": 65,
-				"catchingact": [
-					120,
-					120
-				],
-				"caughtact": [
-					130,
-					130
-				]
+				"catchingact": "120 120",
+				"caughtact": "130 130"
 			},
 			"bdy": {
 				"kind": 0,
@@ -900,20 +2453,22 @@ define({
 				"dvz": 0
 			},
 			"bdy": [
-				{
-					"kind": 0,
-					"x": 17,
-					"y": 21,
-					"w": 23,
-					"h": 59
-				},
-				{
-					"kind": 0,
-					"x": 4,
-					"y": 64,
-					"w": 14,
-					"h": 15
-				},
+				[
+					{
+						"kind": 0,
+						"x": 17,
+						"y": 21,
+						"w": 23,
+						"h": 59
+					},
+					{
+						"kind": 0,
+						"x": 4,
+						"y": 64,
+						"w": 14,
+						"h": 15
+					}
+				],
 				{
 					"kind": 0,
 					"x": 36,
@@ -4775,20 +6330,22 @@ define({
 				"dvz": 0
 			},
 			"bdy": [
-				{
-					"kind": 0,
-					"x": 46,
-					"y": 18,
-					"w": 22,
-					"h": 25
-				},
-				{
-					"kind": 0,
-					"x": 28,
-					"y": 29,
-					"w": 21,
-					"h": 33
-				},
+				[
+					{
+						"kind": 0,
+						"x": 46,
+						"y": 18,
+						"w": 22,
+						"h": 25
+					},
+					{
+						"kind": 0,
+						"x": 28,
+						"y": 29,
+						"w": 21,
+						"h": 33
+					}
+				],
 				{
 					"kind": 0,
 					"x": 13,
@@ -5652,4 +7209,64 @@ define({
 			}
 		}
 	}
-});
+}
+
+demo3();
+
+function demo3() {
+
+//set up controller-------------
+var control_con =
+{
+	up:'i',down:'k',left:'j',right:'l',def:'h',jump:'y',att:'t'
+}
+var control = new F.controller(control_con);
+
+//controller recorder and player
+function control_player(control_con)
+{
+	var rec=[
+{"t":13,"k":"left","d":1},{"t":16,"k":"left","d":1},{"t":16,"k":"left","d":0},{"t":16,"k":"right","d":1},{"t":19,"k":"right","d":1},{"t":19,"k":"right","d":0},{"t":19,"k":"left","d":1},{"t":22,"k":"right","d":1},{"t":22,"k":"left","d":1},{"t":22,"k":"left","d":0},{"t":24,"k":"right","d":1},{"t":24,"k":"right","d":0},{"t":32,"k":"right","d":1},{"t":33,"k":"right","d":1},{"t":33,"k":"right","d":0},{"t":36,"k":"right","d":1},{"t":38,"k":"right","d":1},{"t":38,"k":"right","d":0},{"t":71,"k":"def","d":1},{"t":75,"k":"def","d":1},{"t":75,"k":"def","d":0},{"t":87,"k":"left","d":1},{"t":88,"k":"left","d":1},{"t":88,"k":"left","d":0},{"t":90,"k":"left","d":1},{"t":94,"k":"left","d":1},{"t":94,"k":"left","d":0},{"t":105,"k":"jump","d":1},{"t":108,"k":"att","d":1},{"t":110,"k":"jump","d":1},{"t":110,"k":"jump","d":0},{"t":114,"k":"att","d":1},{"t":114,"k":"att","d":0},{"t":127,"k":"left","d":1},{"t":131,"k":"left","d":1},{"t":131,"k":"left","d":0},{"t":136,"k":"jump","d":1},{"t":141,"k":"jump","d":1},{"t":141,"k":"jump","d":0},{"t":148,"k":"right","d":1},{"t":157,"k":"jump","d":1},{"t":160,"k":"jump","d":1},{"t":160,"k":"jump","d":0},{"t":169,"k":"jump","d":1},{"t":172,"k":"jump","d":1},{"t":172,"k":"jump","d":0},{"t":185,"k":"right","d":1},{"t":185,"k":"right","d":0},{"t":190,"k":"right","d":1},{"t":192,"k":"jump","d":1},{"t":196,"k":"jump","d":1},{"t":196,"k":"jump","d":0},{"t":201,"k":"right","d":1},{"t":201,"k":"right","d":0},{"t":203,"k":"left","d":1},{"t":207,"k":"jump","d":1},{"t":210,"k":"jump","d":1},{"t":210,"k":"jump","d":0},{"t":230,"k":"jump","d":1},{"t":233,"k":"jump","d":1},{"t":233,"k":"jump","d":0},{"t":239,"k":"left","d":1},{"t":239,"k":"left","d":0},{"t":239,"k":"right","d":1},{"t":248,"k":"right","d":1},{"t":248,"k":"right","d":0},{"t":250,"k":"jump","d":1},{"t":254,"k":"jump","d":1},{"t":254,"k":"jump","d":0},{"t":266,"k":"att","d":1},{"t":271,"k":"att","d":1},{"t":271,"k":"att","d":0},{"t":279,"k":"att","d":1},{"t":282,"k":"att","d":1},{"t":282,"k":"att","d":0},{"t":285,"k":"att","d":1},{"t":288,"k":"att","d":1},{"t":288,"k":"att","d":0},{"t":291,"k":"att","d":1},{"t":294,"k":"att","d":1},{"t":294,"k":"att","d":0},{"t":296,"k":"att","d":1},{"t":299,"k":"att","d":1},{"t":299,"k":"att","d":0}
+];
+	var I=0;
+	var time=0;
+	this.state= F.extend_object({},control_con);
+	for ( var j in this.state)
+		this.state[j]=0;
+	this.child= [];
+
+	this.frame= function()
+	{
+		for (; time===rec[I].t; I++)
+		{
+			for( var i in this.child)
+				this.child[i].key(rec[I].k, rec[I].d);
+			this.state[rec[I].k] = rec[I].d;
+
+			if( I===rec.length-1)
+			{
+				I=0;
+				character.switch_controller(control);
+				var help=document.getElementById('help');
+				help.style.visibility='visible';
+			}
+		}
+		time++;
+	}
+};
+var control_play = new control_player(control_con);
+
+//set up a character------------
+var character = new F.LF.character(control_play);
+
+//---run time-------------------
+var timer30 = setInterval(frame30,1000/32);
+function frame30()
+{
+	control_play.frame();
+	character.frame();
+}
+
+};
+</script>
+</body>
