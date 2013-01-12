@@ -11,7 +11,10 @@ var ID={};
 ID['0']={};
 
 /** 30: bandit*/
-ID['30']={};
+ID['30']=
+{
+	dash_backatt: false //can attack while dashing and turned back
+};
 
 /**	Light Weapons		id from 100~149*/
 
