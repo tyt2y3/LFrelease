@@ -5,11 +5,11 @@ base url: [http://tyt2y3.github.com/LFrelease/](http://tyt2y3.github.com/LFrelea
 
 ### What's in this channel
 ### demo/
-latest demo
+life development demo: up-to-the-minute bugfixes and updates
 
 [`demo3.html`](http://tyt2y3.github.com/LFrelease/demo/demo3.html)  `demo3.js`  `milestone`  `time.html`
 ### demo/milestone
-milestone builds
+milestone builds: regular builds upon reasonable progress being made
 ```
 2012June.html      2012may       2012Sep.html      2013Jan.html
 2012June-min.html  2012Nov.html  2012Sep-min.html
