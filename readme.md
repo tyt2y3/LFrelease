@@ -5,7 +5,7 @@ base url: [http://tyt2y3.github.com/LFrelease/](http://tyt2y3.github.com/LFrelea
 
 ### What's in this channel
 ### demo/
-life development demo: up-to-the-minute bugfixes and updates
+life development demo: up-to-minute bugfix and update
 
 [`demo3.html`](http://tyt2y3.github.com/LFrelease/demo/demo3.html)  `demo3.js`  `milestone`  `time.html`
 ### demo/milestone
