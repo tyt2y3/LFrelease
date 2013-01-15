@@ -4,10 +4,12 @@ The release channel of [F.LF](http://github.com/tyt2y3/F.LF).
 base url: [http://tyt2y3.github.com/LFrelease/](http://tyt2y3.github.com/LFrelease/)
 
 ### What's in this channel
+
 ### demo/
 life development demo: up-to-minute bugfix and update
 
-[`demo3.html`](http://tyt2y3.github.com/LFrelease/demo/demo3.html)  `demo3.js`  `milestone`  `time.html`
+[`demo3.html`](http://tyt2y3.github.com/LFrelease/demo/demo3.html)  `demo3.js`  `milestone`  [`time.html`](http://tyt2y3.github.com/LFrelease/demo/time.html)
+
 ### demo/milestone
 milestone builds: regular builds upon reasonable progress being made
 ```
