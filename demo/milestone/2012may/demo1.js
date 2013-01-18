@@ -1,7 +1,7 @@
 requirejs.config({
 	baseUrl: '../../../../'
 });
-requirejs(['core/math','core/controller','./character.js'], function(A,B,C)
+requirejs(['F.core/math','F.core/controller','./character.js'], function(A,B,C)
 {
 	demo1(A,B,C);
 });
