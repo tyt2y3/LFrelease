@@ -1,5 +1,4 @@
 release:
-	git checkout master
 	git add .
 	git commit -m 'release'
 	git checkout gh-pages
