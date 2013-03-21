@@ -1,3 +1,12 @@
+<!DOCTYPE html>
+<head>
+<style>
+html,body
+{
+	height:98%;
+}
+</style>
+</head>
 <body>
 <textarea id='inp' style='width:99%; height:15%' ><bmp_begin>
 name: Bandit
@@ -1835,6 +1844,11 @@ function convert()
 	var V=inp.value; //input value
 
 	//parsing
+	if( V.indexOf('<')===-1)
+	{
+		parse_background();
+	}
+	else
 	for( var prsi=0; prsi<9; prsi++)
 	{
 		var tag = next_tag();
@@ -1846,7 +1860,7 @@ function convert()
 			parse_frames();
 	}
 	out.value=JSON.stringify(O,null,'\t'); //view result
-	var objectname= O.bmp.name? (O.bmp.name).toLowerCase() : 'data';
+	//var objectname= O.bmp.name? (O.bmp.name).toLowerCase() : 'data';
 	out.value='define('+out.value+');';
 
 	function g(S) //go forward
@@ -1854,7 +1868,7 @@ function convert()
 		var oldp=p;
 		p=V.indexOf(S,p);
 		if( p<oldp)
-			prsi=9;
+			prsi=9; //break the parsing loop
 		return p;
 	}
 	function gg(F)
@@ -2043,37 +2057,48 @@ function convert()
 			g('\n');
 		}
 	}
-	/*
-	function remove_empty()
-	{	//to save memory, all attributes of numerical zero are dumped
-		var O1 = extend_object({},O);
-		O = O1;
-	}
 
-	function extend_object(obj1, obj2) //extend obj1 with all members of obj2
+	function parse_background()
 	{
-		for (var p in obj2)
+		for( var i=0; i<3; i++)
 		{
-			if ( typeof obj2[p]=='object' )
-			{
-				obj1[p] = extend_object((obj1[p]?obj1[p]:{}), obj2[p]);
-			} else
-			{
-				if( obj2[p]!=='0')
-					obj1[p] = obj2[p];
-			}
+			var a=p;
+			var b=g('\n');
+			var line=V.slice(a,b);
+			addl(O,line);
+			gg(non_space_newline);
 		}
-		return obj1;
-	}*/
+		O.layer=[];
+		for( ;;)
+		{
+			if( g('layer:')!==-1)
+			{
+				g('\n');
+				var n1 = gg(non_space_newline);
+				var n2 = g('\n');
+				var n3 = gg(non_space_newline);
+				var n4 = g('\n');
+				var lay = {pic:V.slice(n1,n2)};
+				addl(lay,V.slice(n3,n4));
+				O.layer.push(lay);
+			}
+			else
+				break;
+		}
+	}
 
 	function add(T,S,s) //target, "property_s_value"
 	{
 		var A = S.split(s);
 		if( A.length > 2) alert(A.join());
+		if( A[0]) A[0] = trim(A[0]);
+		if( A[1]) A[1] = trim(A[1]);
 		if( A[1])
 		{
 			if( A[0]==='catchingact' ||
-			    A[0]==='caughtact')
+			    A[0]==='caughtact' ||
+			    A[0]==='zboundary' ||
+			    A[0]==='shadowsize' )
 			{
 				var B = A[1].split(' ');
 				var v0 = parseInt(B[0]);
@@ -2083,7 +2108,6 @@ function convert()
 			else
 			{
 				var value;
-				A[1] = trim(A[1]);
 				if( is_integer(A[1]))
 					value = parseInt(A[1]);
 				else if( is_float(A[1]))
@@ -2096,7 +2120,10 @@ function convert()
 	}
 	function addl(T,S) //add long: target, "P1_s1_V1_s2_P2_s1_V2..."
 	{
-		if( S.indexOf('catchingact')===-1)
+		if( S.indexOf('catchingact')===-1 &&
+			S.indexOf('caughtact')===-1 &&
+			S.indexOf('zboundary')===-1 &&
+			S.indexOf('shadowsize')===-1 )
 		{
 			S=S.replace(/: /g,':');
 			S=S.replace(/  /g,' ');
