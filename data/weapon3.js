@@ -2,14 +2,14 @@ define({
   bmp: {
     file: [
       {
-        "file(0-99)": "sprite/weapon1.png", w: 58, h: 58, row: 10, col: 10
+        "file(0-99)": "sprite/weapon3.png", w: 58, h: 58, row: 10, col: 10
       }
     ],
-    weapon_hp: 800,
-    weapon_drop_hurt: 200,
-    weapon_hit_sound: "sound/010.ogg",
-    weapon_drop_sound: "sound/010.ogg",
-    weapon_broken_sound: "sound/021.ogg"
+    weapon_hp: 400,
+    weapon_drop_hurt: 180,
+    weapon_hit_sound: "sound/035.ogg",
+    weapon_drop_sound: "sound/037.ogg",
+    weapon_broken_sound: "sound/036.ogg"
   },
   frame: {
   0: { name: "in_the_sky",
@@ -69,16 +69,16 @@ define({
   10: { name: "on_hand",
     pic: 5, state: 2001, wait: 0, next: 0, dvx: 0, dvy: 0, centerx: 29, centery: 56,
     wpoint: {
-      kind: 2, x: 29, y: 56, weaponact: 35, attacking: 0, cover: 0, dvx: 0, dvy: 0
+      kind: 2, x: 29, y: 56, weaponact: 35, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     }
   },
   20: { name: "on_ground",
-    pic: 5, state: 2004, wait: 0, next: 0, dvx: 0, dvy: 0, centerx: 29, centery: 56,
+    pic: 5, state: 2004, wait: 0, next: 0, dvx: 0, dvy: 0, centerx: 29, centery: 51,
     itr: {
       kind: 14, x: 21, y: 37, w: 16, h: 18, vrest: 1
     },
     bdy: {
-      kind: 0, x: 11, y: 15, w: 36, h: 40
+      kind: 0, x: 11, y: 10, w: 36, h: 50
     }
   },
   21: { name: "just_on_ground",
