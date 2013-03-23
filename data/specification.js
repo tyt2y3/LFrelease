@@ -13,7 +13,9 @@ ID['0']={};
 /** 30: bandit*/
 ID['30']=
 {
-	dash_backatt: false //can attack while dashing and turned back
+	dash_backattack: false, //can attack while dashing and turned back
+	heavy_weapon_dash: false,//extended standard; can dash while holding a heavy weapon
+	heavy_weapon_jump: false //extended standard; can jump while holding a heavy weapon
 };
 
 /**	Light Weapons		id from 100~149*/

@@ -2199,10 +2199,14 @@ function convert()
 			{
 				if( name==='bmp')
 					str += (cc?',':'')+sep+pretext+tab;
+				else if( p==='pic' || 
+					(!name && p==='name') ||
+					(!name && p==='width' && pretext==='') ||
+					(!name && p==='shadow') ||
+					(!name && p==='transparency') )
+					str += (cc?',':'')+sep+pretext+tab;
 				else if( p==='name')
 					str += ' ';
-				else if( p==='pic')
-					str += (cc?',':'')+sep+pretext+tab;
 				else
 					str += (cc?', ':sep+pretext+tab);
 				var qc=p.indexOf('(')===-1?'':'"';
