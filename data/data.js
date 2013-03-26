@@ -18,6 +18,7 @@ define({
 	object:
 	[
 		{id:30, type:'character', file:'data/bandit'},
+		{id: 1, type:'character', file:'data/deep'},
 		{id:100, type:'lightweapon', file:'data/weapon0'}, //stick
 		{id:101, type:'lightweapon', file:'data/weapon2'}, //hoe
 		{id:150, type:'heavyweapon', file:'data/weapon1'}, //stone
