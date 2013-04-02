@@ -22,7 +22,7 @@ define({
 		{id:100, type:'lightweapon', file:'data/weapon0'}, //stick
 		{id:101, type:'lightweapon', file:'data/weapon2'}, //hoe
 		{id:150, type:'heavyweapon', file:'data/weapon1'}, //stone
-		{id:300, type:'effects', file:'data/effect0'},
+		{id:300, type:'effects', file:'data/effect0'}, //blast
 		{id:301, type:'effects', file:'data/effect1'} //blood
 	],
 
