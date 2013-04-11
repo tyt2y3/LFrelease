@@ -32,5 +32,8 @@ define({
 	[
 	],
 
-	id: '100~199 drop weapon'
+	config:
+	[
+		{id:'100~199', then:'drop weapon'}
+	]
 });
