@@ -44,7 +44,7 @@ ID['101']= //hoe
 
 ID['150']= //stone
 {
-	mass: 0.8
+	mass: 0.9
 };
 
 /**	Effects				id from 300~349 (extended standard)*/
