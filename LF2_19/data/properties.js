@@ -7,11 +7,13 @@ define(function()
 
 var ID={};
 
-/** 0: default*/
-ID['0']={};
+/** 1: Deep*/
+ID[1]=
+{
+};
 
-/** 30: bandit*/
-ID['30']=
+/** 30: Bandit*/
+ID[30]=
 {
 	dash_backattack: false, //can attack while dashing and turned back
 	heavy_weapon_dash: false,//extended standard; can dash while holding a heavy weapon
@@ -20,7 +22,7 @@ ID['30']=
 
 /**	Light Weapons		id from 100~149*/
 
-ID['100']= //stick (baseball bat)
+ID[100]= //stick (baseball bat)
 {
 	mass: 0.35,
 	attackable: true, //can hold this to attack
@@ -32,7 +34,7 @@ ID['100']= //stick (baseball bat)
 	//TODO: 039.wav when hitting id: 121
 };
 
-ID['101']= //hoe
+ID[101]= //hoe
 {
 	mass: 0.65,
 	attackable: true,
@@ -42,21 +44,21 @@ ID['101']= //hoe
 
 /**  heavyweapon				id from 150~199*/
 
-ID['150']= //stone
+ID[150]= //stone
 {
 	mass: 0.9
 };
 
 /**	Effects				id from 300~349 (extended standard)*/
 
-ID['300']= //hit
+ID[300]= //hit
 {
 	oscillate: 4, //oscillation amplitude
 	cant_move: true,
 	drop_weapon: true
 };
 
-ID['301']= //blood
+ID[301]= //blood
 {
 	cant_move: true,
 	drop_weapon: true
