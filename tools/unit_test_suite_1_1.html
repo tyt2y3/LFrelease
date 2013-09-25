@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<head>
+<meta http-equiv='content-type' content='text/html; charset=UTF-8'>
+</head>
+
+<body>
+<script data-main='../../' src='../third_party/require.js'></script>
+<script>
+define('test_cases',[],{
+test_cases: [
+{	//S2
+	scenario:
+	{	//2 players interactions
+		player: [
+			{ id: 30, team: 1},
+			{ id: 30, team: 2}
+		]
+	},
+	cases: [
+	{	name: 'punch each other',
+		setup: function(match)
+		{
+			match.character[0].set_pos(300,0,200);
+			match.character[1].set_pos(350,0,200);
+		},
+		player: [
+		[	//player 1
+			{f:[0,1,2,3]},
+			{f:[0,1,2,3],k:'att'},
+			{f:[60,65]},{f:[60,65]},{f:[61,66]},
+			{f:220},{f:220},{f:220},{f:220},{f:220},
+			{f:221},{f:221},{f:221},{f:221},
+			{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},
+			{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}
+		],
+		[	//player 2
+			{f:[0,1,2,3],k:'left'},
+			{f:[0,1,2,3],k:'att'},
+			{f:[60,65]},{f:[60,65]},{f:[61,66]},
+			{f:220},{f:220},{f:220},{f:220},{f:220},
+			{f:221},{f:221},{f:221},{f:221},
+			{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},
+			{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}
+		]]
+	}
+	]
+}
+]});
+requirejs(['LF/tools/unit_test_suite'],function(){});
+</script>
+<script data-main='unit_test_suite.js' src='../third_party/require.js'></script>
+</body>

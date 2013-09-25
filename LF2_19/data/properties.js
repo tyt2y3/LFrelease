@@ -24,7 +24,7 @@ ID[30]=
 
 ID[100]= //stick (baseball bat)
 {
-	mass: 0.35,
+	mass: 0.3,
 	attackable: true, //can hold this to attack
 	run_throw: true, //can throw while running by forward-attack
 	jump_throw: true, //can throw while jumping by forward-attack
@@ -36,7 +36,7 @@ ID[100]= //stick (baseball bat)
 
 ID[101]= //hoe
 {
-	mass: 0.65,
+	mass: 0.7,
 	attackable: true,
 	run_throw: true,
 	jump_throw: true
@@ -62,6 +62,13 @@ ID[301]= //blood
 {
 	cant_move: true,
 	drop_weapon: true
+};
+
+ID[304]=
+{
+	cant_move: true,
+	drop_weapon: true,
+	reflect_flying_attack: true
 };
 
 return ID;

@@ -17,19 +17,21 @@ define({
 
 	object:
 	[
-		{id:30, type:'character', file:'data/bandit'},
-		{id: 1, type:'character', file:'data/deep'},
-		{id:100, type:'lightweapon', file:'data/weapon0'}, //stick
-		{id:101, type:'lightweapon', file:'data/weapon2'}, //hoe
-		{id:150, type:'heavyweapon', file:'data/weapon1'}, //stone
-		{id:300, type:'effects', file:'data/effect0'}, //blast
-		{id:301, type:'effects', file:'data/effect1'} //blood
+		{id:30, type:'character', file:'data/bandit.js'},
+		{id: 1, type:'character', file:'data/deep.js'},
+		{id:100, type:'lightweapon', file:'data/weapon0.js'}, //stick
+		{id:101, type:'lightweapon', file:'data/weapon2.js'}, //hoe
+		{id:150, type:'heavyweapon', file:'data/weapon1.js'}, //stone
+		{id:300, type:'effects', file:'data/effect0.js'}, //blast
+		{id:301, type:'effects', file:'data/effect1.js'} //blood
 	],
 
 	file_editing: {},
 
 	background:
 	[
+		{id:1, file:'bg/cuhk/bg.js'},
+		{id:10,file:'bg/template/1/bg.js'}
 	],
 
 	config:
