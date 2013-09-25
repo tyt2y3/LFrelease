@@ -23,6 +23,24 @@ define({
  		'sprite/weapon2.png':'http://lh3.googleusercontent.com/-sZgZiSUOuWM/UWf0yM6yCMI/AAAAAAAAALw/dmrs2MakO9E/s490/weapon2.png',
  		'sprite/weapon2_mirror.png':'http://lh4.googleusercontent.com/-GHMZd6DTBqU/UWf0yEtjiSI/AAAAAAAAAL4/CMUUJ4dGnRQ/s490/weapon2_mirror.png',
  		'sprite/weapon3.png':'http://lh4.googleusercontent.com/-Gjt9lUagcCo/UWf0yUFBHOI/AAAAAAAAAMA/aLZ25ruBMPk/s455/weapon3.png',
- 		'sprite/weapon3_mirror.png':'http://lh3.googleusercontent.com/-L77sU6tkh48/UWf0yh611UI/AAAAAAAAAME/NftmrhiUico/s455/weapon3_mirror.png'
+ 		'sprite/weapon3_mirror.png':'http://lh3.googleusercontent.com/-L77sU6tkh48/UWf0yh611UI/AAAAAAAAAME/NftmrhiUico/s455/weapon3_mirror.png',
+ 		'bg/cuhk/s.png':'http://lh5.googleusercontent.com/-K9nSdHGO33Y/UkLPUC0y3RI/AAAAAAAAAQc/nUubvLZN43M/w37-h9-no/s.png',
+ 		'bg/cuhk/floor1.png':'http://lh3.googleusercontent.com/-w9uR8F2rJ0s/UkLPQM53fzI/AAAAAAAAAPE/JazY2MZTfp0/w797-h29-no/floor1.png',
+ 		'bg/cuhk/floor2.png':'http://lh3.googleusercontent.com/-REmAXSWpyJ4/UkLPQUfTJcI/AAAAAAAAAPM/t7sLmE4BeJE/w797-h31-no/floor2.png',
+ 		'bg/cuhk/floor3.png':'http://lh4.googleusercontent.com/-bktPpeeeOCw/UkLPQwCYNWI/AAAAAAAAAPU/ofwJ2aMdxz8/w800-h106-no/floor3.png',
+ 		'bg/cuhk/sky1.png':'http://lh5.googleusercontent.com/-weNLZohEym8/UkLPUmYkAWI/AAAAAAAAAQ4/HhN1YIYFyZc/w800-h210-no/sky1.png',
+		'bg/cuhk/sky2.png':'http://lh3.googleusercontent.com/-eQyM9IoE32I/UkLPUlDYqyI/AAAAAAAAAQs/PBv3rYMIixk/w167-h210-no/sky2.png',
+		'bg/cuhk/a1.png':'http://lh5.googleusercontent.com/-dDx7K3hmJm8/UkLPPmJpHFI/AAAAAAAAAO0/jw3Fpf9wGl4/w130-h68-no/a1.png',
+		'bg/cuhk/a2.png':'http://lh6.googleusercontent.com/-k-zEr5ER3FI/UkLPPl-bdSI/AAAAAAAAAQg/ekteGbERGjU/w190-h106-no/a2.png',
+		'bg/cuhk/lib.png':'http://lh6.googleusercontent.com/-fJ33Wu3vM64/UkLPTbHdq-I/AAAAAAAAAQM/dBdnejHuTr4/w641-h232-no/lib.png',
+		'bg/cuhk/hill.png':'http://lh5.googleusercontent.com/-9yHdsNZFeLk/UkLPR05p1xI/AAAAAAAAAPs/kXWOpovQtWY/w313-h264-no/hill.png',
+		'bg/cuhk/hill2.png':'http://lh6.googleusercontent.com/-e0VOCI4muDY/UkLPSMrt81I/AAAAAAAAAP0/-m6shgXVfYQ/w220-h119-no/hill2.png',
+		'bg/cuhk/bu1.png':'http://lh3.googleusercontent.com/-4iq7NyBhUb8/UkLPPiNgn-I/AAAAAAAAAO8/xlFIZGCOoZ8/w349-h212-no/bu1.png',
+		'bg/cuhk/statue.png':'http://lh5.googleusercontent.com/--d3tFdp3JIM/UkLPU4zzypI/AAAAAAAAAQ0/p1xSpv8kaCo/w407-h110-no/statue.png',
+		'bg/cuhk/lamp1.png':'http://lh5.googleusercontent.com/-nPKgatul6XU/UkLPSp1C7II/AAAAAAAAAP8/OvWkLbScouQ/w82-h137-no/lamp1.png',
+		'bg/cuhk/lamp2.png':'http://lh3.googleusercontent.com/-v5YXfqz_Gv4/UkLPS3clFII/AAAAAAAAAQA/f0PzZU2ZTTs/w82-h137-no/lamp2.png',
+		'bg/cuhk/grass2.png':'http://lh4.googleusercontent.com/-9reyLWxSMSY/UkLPRVEsUxI/AAAAAAAAAPg/AUaxFwwvxgs/w163-h54-no/grass2.png',
+		'bg/cuhk/grass.png':'http://lh5.googleusercontent.com/-pT0H5SRl8Tc/UkLPRORhBAI/AAAAAAAAAPc/lMi3f47IJos/w180-h128-no/grass.png',
+		'bg/cuhk/right.png':'http://lh3.googleusercontent.com/-XhOUV4xYvRE/UkLPTnq8iKI/AAAAAAAAAQU/LggQlqUzjsI/w141-h122-no/right.png'
  	}
 });
