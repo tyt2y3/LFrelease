@@ -1,5 +1,5 @@
 define({
-	"data":"data/data",
-	"properties":"data/properties",
-	"resourcemap":"resourcemap"
+	"data":"data/data.js",
+	"properties":"data/properties.js",
+	"resourcemap":"resourcemap.js"
 });/*structure must be strict JSON*/

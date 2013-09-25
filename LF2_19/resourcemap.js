@@ -1,9 +1,5 @@
 define({
- 	condition: function()
- 	{
- 		if( window.location.href.indexOf('http://')===0)
- 			return true;
- 	},
+ 	condition: 'location contain http:// at 0',
  	resource:
  	{
  		'sprite/bandit_0.png':'http://lh4.googleusercontent.com/-7xAYm5GpA4k/UWf0qug24QI/AAAAAAAAAJo/NFWjW_yI5xM/s800/bandit_0.png',
