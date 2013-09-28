@@ -1030,6 +1030,10 @@ function sprite (config)
 	if( config.div)
 	{
 		this.el = config.div;
+		/* if( this.el.hasAttribute('class'))
+			this.el.setAttribute('class', this.el.getAttribute('class')+' F_sprite_inline');
+		else
+			this.el.setAttribute('class','F_sprite_inline'); */
 		if( this.el.className)
 			this.el.className += ' F_sprite_inline';
 		else
@@ -1037,18 +1041,12 @@ function sprite (config)
 		if( window.getComputedStyle(this.el).getPropertyValue('position')==='static')
 			this.el.style.position='relative';
 	}
-	else if( config.inplace_div)
-	{
-		this.inline_img=true;
-		this.el = config.inplace_div;
-	}
 	else
 	{
 		this.el = document.createElement('div');
 		//this.el.setAttribute('class','F_sprite');
 		this.el.className = 'F_sprite';
-		if( config.canvas)
-			config.canvas.appendChild(this.el);
+		config.canvas.appendChild(this.el);
 	}
 
 	this.img={};
@@ -1195,14 +1193,6 @@ sprite.prototype.set_w_h=function(w,h)
 	this.el.style.width=w+'px';
 	this.el.style.height=h+'px';
 }
-sprite.prototype.set_w=function(w)
-{
-	this.el.style.width=w+'px';
-}
-sprite.prototype.set_h=function(h)
-{
-	this.el.style.height=h+'px';
-}
 
 /*\
  * sprite.set_xy
@@ -1264,16 +1254,14 @@ sprite.prototype.add_img=function(imgpath,Name)
 {
 	var This=this;
 	var im = document.createElement('img');
-	if( !this.inline_img)
-		im.setAttribute('class','F_sprite_img');
-	im.addEventListener('load', onload, true);
-	function onload()
+	im.setAttribute('class','F_sprite_img');
+	im.onload=function()
 	{
 		if( !this.naturalWidth) this.naturalWidth=this.width;
 		if( !this.naturalHeight) this.naturalHeight=this.height;
 		if( This.fit_to_img)
 			This.set_w_h(this.naturalWidth,this.naturalHeight);
-		im.removeEventListener('load', onload, true);
+		this.onload=null;
 	}
 	im.src = sprite.resolve_resource(imgpath);
 	this.el.appendChild(im);
@@ -1291,20 +1279,19 @@ sprite.prototype.add_img=function(imgpath,Name)
 sprite.prototype.adopt_img=function(im)
 {
 	var Name=im.getAttribute('name');
-	if( im.className)
-		im.className += ' F_sprite_img';
+	if( im.hasAttribute('class'))
+		im.setAttribute('class', im.getAttribute('class')+' F_sprite_img');
 	else
-		im.className = 'F_sprite_img';
+		im.setAttribute('class','F_sprite_img');
 	if( !im.naturalWidth) im.naturalWidth=im.width;
 	if( !im.naturalHeight) im.naturalHeight=im.height;
 	if( !im.naturalWidth && !im.naturalHeight)
-		im.addEventListener('load', onload, true);
-	function onload()
-	{
-		if( !this.naturalWidth) this.naturalWidth=this.width;
-		if( !this.naturalHeight) this.naturalHeight=this.height;
-		im.removeEventListener('load', onload, true);
-	}
+		im.onload=function()
+		{
+			if( !this.naturalWidth) this.naturalWidth=this.width;
+			if( !this.naturalHeight) this.naturalHeight=this.height;
+			this.onload=null;
+		}
 	this.img[Name]=im;
 	this.switch_img(Name);
 }
@@ -1443,18 +1430,13 @@ define('LF/global',[],function()
 var G={};
 
 G.application={};
-var GA = G.application;
-GA.window={};
-GA.window.width=794;
-GA.window.height=550;
-GA.viewer={};
-GA.viewer.height=400;
-GA.camera={};
-GA.camera.speed_factor=1/18;
-GA.panel={};
-GA.panel.pane={};
-GA.panel.pane.width=198;
-GA.panel.pane.height=54;
+G.application.window={};
+G.application.window.width=794;
+G.application.window.height=550;
+G.application.viewer={};
+G.application.viewer.height=400;
+G.application.camera={};
+G.application.camera.speed_factor=1/18;
 
 /*\
  * global.combo_list
@@ -1463,35 +1445,16 @@ GA.panel.pane.height=54;
  | { name:'DvA', seq:['def','down','att']} //example
 \*/
 G.combo_list = [
-	{ name:'D<A', seq:['def','left','att'], clear_on_combo:false},
-	{ name:'D>A', seq:['def','right','att'], clear_on_combo:false},
-	{ name:'DvA', seq:['def','down','att']},
-	{ name:'D^A', seq:['def','up','att']},
-	{ name:'DvJ', seq:['def','down','jump']},
-	{ name:'D^J', seq:['def','up','jump']},
-	{ name:'D<J', seq:['def','left','jump']},
-	{ name:'D>J', seq:['def','right','jump']},
-	{ name:'D<AJ', seq:['def','left','att','jump']},
-	{ name:'D>AJ', seq:['def','right','att','jump']},
-	{ name:'DJA', seq:['def','jump','att']}
+	{ name:'hit_Fa', seq:['def','left','att']},
+	{ name:'hit_Fa', seq:['def','right','att']},
+	{ name:'hit_Da', seq:['def','down','att']},
+	{ name:'hit_Ua', seq:['def','up','att']},
+	{ name:'hit_Dj', seq:['def','down','jump']},
+	{ name:'hit_Uj', seq:['def','up','jump']},
+	{ name:'hit_Fj', seq:['def','left','jump']},
+	{ name:'hit_Fj', seq:['def','right','jump']},
+	{ name:'hit_ja', seq:['def','jump','att']}
 ];
-G.combo_tag =
-{	//look up from combo name to tag name
-	'def':'hit_d',
-	'jump':'hit_j',
-	'att':'hit_a',
-	'D>A':'hit_Fa',
-	'D<A':'hit_Fa',
-	'DvA':'hit_Da',
-	'D^A':'hit_Ua',
-	'DvJ':'hit_Dj',
-	'D^J':'hit_Uj',
-	'D>J':'hit_Fj',
-	'D<J':'hit_Fj',
-	'D<AJ':'hit_Fj',
-	'D>AJ':'hit_Fj',
-	'DJA':'hit_ja'
-};
 
 G.lazyload = function(O)
 {
@@ -1512,9 +1475,6 @@ var GC = G.gameplay;
  * if any of them cannot be overridden, please move them out of default.
 \*/
 GC.default={};
-GC.default.health={};
-GC.default.health.hp_full=500;
-GC.default.health.mp_full=500;
 
 GC.default.itr={};
 GC.default.itr.zwidth= 12; //default itr zwidth
@@ -1736,11 +1696,9 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 				for( var i=0; i<datalist.object.length; i++)
 					if( allow_load(datalist.object[i]))
 						datafile_depend.push(path+normalize_file(datalist.object[i].file));
-
 				for( var i=0; i<datalist.background.length; i++)
-					datafile_depend.push(path+normalize_file(datalist.background[i].file));
-
-				datafile_depend.push(path+normalize_file(datalist.UI.file));
+					if( allow_load(datalist.background[i]))
+						datafile_depend.push(path+normalize_file(datalist.background[i].file));
 
 				require( datafile_depend, function()
 				{
@@ -1783,8 +1741,6 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 							data: arguments[j]
 						});
 					}
-					gamedata.UI = arguments[j];
-
 					content.data=gamedata;
 					module_lazyload();
 					load_ready();
@@ -2175,10 +2131,10 @@ function sprite (bmp, parent)
 			w:bmp.file[i].w+1, h:bmp.file[i].h+1,    //width, height of a frame
 			gx:bmp.file[i].row, gy:bmp.file[i].col,//define a gx*gy grid of frames
 			tar:sp,     //target sprite
-			borderleft: 0,
-			bordertop: 0,
-			borderright: 1,
-			borderbottom: 1
+			borderleft: 1,
+			bordertop: 1,
+			borderright: 2,
+			borderbottom: 2
 		};
 		/* var ani_mirror_con=
 		{
@@ -2317,7 +2273,6 @@ function mech(parent)
 	this.parent=parent;
 	this.vol_body={0:{},1:{},2:{},3:{},4:{},5:{},length:0,empty_data:{}};
 	this.bg=parent.bg;
-	this.sha=parent.shadow;
 }
 
 //return the array of volume of the current frame, that volume can be bdy,itr or other
@@ -2607,13 +2562,6 @@ mech.prototype.dynamics= function()
 		ps.x += ps.vx;
 		ps.z += ps.vz;
 	}
-	if( this.floor_xbound)
-	{
-		if( ps.x<0)
-			ps.x=0;
-		if( ps.x>this.bg.width)
-			ps.x=this.bg.width;
-	}
 	if( ps.z < this.bg.zboundary[0]) //z bounding
 		ps.z = this.bg.zboundary[0];
 	if( ps.z > this.bg.zboundary[1])
@@ -2632,12 +2580,7 @@ mech.prototype.dynamics= function()
 	}
 
 	sp.set_x_y(ps.sx, ps.sy+ps.sz); //projection onto screen
-	sp.set_z(ps.sz+ps.zz); //z ordering
-	if( this.sha)
-	{
-		this.sha.set_x_y(ps.x-this.bg.shadow.x, ps.z-this.bg.shadow.y);
-		this.sha.set_z(ps.sz-1);
-	}
+	sp.set_z(ps.sz+ps.zz);  //z ordering
 
 	if( ps.y===0) //only when on the ground
 	{
@@ -2825,12 +2768,204 @@ return util;
 });
 
 /*\
+ * combo detector
+ * - listen key events and detect combo from a controller
+ * - maintains a clean sequence of pressed keys and fire events when combo is detected
+ * - LF2, KOF style combos
+ * - eliminating auto-repeated keys
+\*/
+
+define('F.core/combodec',[], function(){
+
+/*\
+ * combodec
+ [ class ]
+ - controller (object) a reference to @controller
+ - config (object)
+ - combo (array) combo definition
+|	var con_config=
+|	{
+|		up:'h',down:'n',left:'b',right:'m',def:'v',jump:'f',att:'d'
+|		//,'control name':'control key',,,
+|	}
+|	var con = new controller(con_config);
+|	var dec_config=
+|	{
+|		timeout: 30,  //[optional] time before clearing the sequence buffer in terms of frames
+|		comboout: 15, //[optional] the max time interval between keys to make a combo,
+|			//an interrupt is inserted when comboout expires
+|		clear_on_combo: true, //[optional] if true, will clear the sequence buffer when a combo occur
+|		callback: dec_callback, //callback function when combo detected
+|		rp: {up:1,down:1,left:2,right:2,def:3,jump:1,att:5}
+|			//[optional] max repeat count of each key, unlimited if not stated
+|	};
+|	var combo = [
+|	{
+|		name: 'blast',	//combo name
+|		seq:  ['def','right','att'], //array of key sequence
+|		maxtime: 10 //[optional] the max allowed time difference between the first and last key input
+|		clear_on_combo: false, //[optional] override generic config
+|	} //,,,
+|	];
+|	var dec = new combodec ( con, dec_config, combo);
+|	function dec_callback(combo)
+|	{
+|		alert(combo);
+|	}
+ * [example](../sample/combo.html)
+ # <iframe src="../sample/combo.html" width="800" height="500"></iframe>
+\*/
+function combodec (controller, config, combo)
+{
+	/*\
+	 * combodec.time
+	 - (number) current time
+	 [ property ]
+	\*/
+	this.time=1;
+	/*\
+	 * combodec.timeout
+	 - (number) when to clear the sequence buffer
+	 [ property ]
+	\*/
+	this.timeout=0;
+	/*\
+	 * combodec.comboout
+	 - (number) when to interrupt the current combo
+	 [ property ]
+	\*/
+	this.comboout=0;
+	/*\
+	 * combodec.con
+	 - (object) parent controller
+	 [ property ]
+	\*/
+	this.con=controller;
+	/*\
+	 * combodec.seq
+	 - (array) the key input sequence. note that combodec logs key names rather than key stroke,
+	 * i.e. `up`,`down` rather than `w`,`s`
+	 - (object) each is `{k:key,t:time}`
+	 * 
+	 * will be cleared regularly as defined by `config.timeout` or `config.clear_on_combo`
+	 [ property ]
+	\*/
+	this.seq=new Array();
+	/*\
+	 * combodec.config
+	 - (object)
+	 [ property ]
+	\*/
+	this.config=config;
+	/*\
+	 * combodec.combo
+	 - (array) combo list
+	 [ property ]
+	\*/
+	this.combo=combo;
+	this.con.child.push(this);
+}
+
+/*\
+ * combodec.key
+ * supply keys to combodec
+ [ method ]
+ - k (string) key name
+ - down (boolean)
+ * note that it receives key name, i.e. `up`,`down` rather than `w`,`s`
+\*/
+combodec.prototype.key=function(K, down)
+{
+	if(!down)
+		return;
+
+	var seq=this.seq;
+
+	var push=true;
+	if( this.config.rp)
+	{	//detect repeated keys
+		for (var i=seq.length-1, cc=1; i>=0 && seq[i]==K; i--,cc++)
+			if( cc>=this.config.rp[K])
+				push=false;
+	}
+
+	//eliminate repeated key strokes by browser; discard keys that are already pressed down
+	if( this.con.state[K])
+		push=false;
+	//  remarks: opera linux has a strange behavior that repeating keys **do** fire keyup events
+
+	if( this.config.timeout)
+		this.timeout=this.time+this.config.timeout;
+	if( this.config.comboout)
+		this.comboout=this.time+this.config.comboout;
+
+	if( push)
+		seq.push({k:K,t:this.time});
+
+	if ( this.combo && push)
+	{	//detect combo
+		var C = this.combo;
+		for (var i in C)
+		{
+			var detected=true;
+			var j=seq.length-C[i].seq.length;
+			if( j<0) detected=false;
+			else for (var k=0; j<seq.length; j++,k++)
+			{
+				if( C[i].seq[k] !== seq[j].k ||
+					(C[i].maxtime && seq[seq.length-1].t-seq[j].t>C[i].maxtime))
+				{
+					detected=false;
+					break;
+				}
+			}
+			if( detected)
+			{
+				this.config.callback(C[i]);
+				if( C[i].clear_on_combo || (C[i].clear_on_combo!==false && this.config.clear_on_combo))
+					this.clear_seq();
+			}
+		}
+	}
+}
+
+/*\
+ * combodec.clear_seq
+ * clear the key sequence
+ [ method ]
+ * normally you would not need to call this manually
+\*/
+combodec.prototype.clear_seq=function()
+{
+	this.seq.length=0;
+	this.timeout=this.time-1;
+	this.comboout=this.time-1;
+}
+
+/*\
+ * combodec.frame
+ * a tick of time
+ [ method ]
+\*/
+combodec.prototype.frame=function()
+{
+	if( this.time===this.timeout)
+		this.clear_seq();
+	if( this.time===this.comboout)
+		this.seq.push({k:'_',t:this.time});
+	this.time++;
+}
+
+return combodec;
+});
+
+/*\
  * livingobject
  * 
  * a base class for all living objects
 \*/
-define('LF/livingobject',['LF/global','LF/sprite','LF/mechanics','LF/util','F.core/sprite'],
-function ( Global, Sprite, Mech, util, Fsprite)
+define('LF/livingobject',['LF/global','LF/sprite','LF/mechanics','LF/util','F.core/combodec'],
+function ( Global, Sprite, Mech, util, Fcombodec)
 {
 	var GC=Global.gameplay;
 
@@ -2871,20 +3006,12 @@ function ( Global, Sprite, Mech, util, Fsprite)
 
 		//states
 		$.sp = new Sprite(data.bmp, $.match.stage);
-		if( !$.proper('no_shadow'))
-		{
-			var sp_sha=
-			{
-				canvas: $.match.stage,
-				wh: 'fit',
-				img: $.bg.shadow.img
-			}
-			$.shadow = new Fsprite(sp_sha);
-		}
 		$.health=
 		{
 			hp: 100,
-			mp: 100
+			mp: 100,
+			bdefend: 0,
+			fall: 0
 		};
 		$.frame=
 		{
@@ -2922,6 +3049,39 @@ function ( Global, Sprite, Mech, util, Fsprite)
 			id: 0 //id of holding
 		};
 		$.switch_dir=true; //direction switcher
+		$.con = config.controller;
+		if( $.con)
+		{
+			function combo_event(kobj)
+			{
+				var K=kobj.name;
+				switch (K)
+				{
+					case 'left': case 'right':
+						if( $.switch_dir)
+							$.switch_dir_fun(K);
+				}
+				$.statemem.combo = K;
+			}
+			var dec_con = //combo detector
+			{
+				clear_on_combo: true,
+				callback: combo_event //callback function when combo detected
+			}
+			var combo_list = [
+				{ name:'left',	seq:['left'],	clear_on_combo:false},
+				{ name:'right',	seq:['right'],	clear_on_combo:false},
+				{ name:'up',	seq:['up'],		clear_on_combo:false},
+				{ name:'down',	seq:['down'],	clear_on_combo:false},
+				{ name:'def',	seq:['def'],	clear_on_combo:false},
+				{ name:'jump',	seq:['jump'],	clear_on_combo:false},
+				{ name:'att',	seq:['att'],	clear_on_combo:false},
+				{ name:'run',	seq:['right','right'],	maxtime:9},
+				{ name:'run',	seq:['left','left'],	maxtime:9}
+				//plus those defined in Global.combo_list
+			];
+			$.combodec = new Fcombodec($.con, dec_con, combo_list.concat(Global.combo_list));
+		}
 	}
 
 	livingobject.prototype.destroy = function()
@@ -2932,6 +3092,32 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	livingobject.prototype.log = function(mes)
 	{
 		this.match.log(mes);
+	}
+
+	//to emit a combo event
+	livingobject.prototype.combo_update = function()
+	{		
+		/**	different from `state_update`, current state receive the combo event first,
+			and only if it returned falsy result, the combo event is passed to the generic state.
+			if the combo event is not consumed, it is stored in state memory,
+			resulting in 1 combo event being emited every frame until it is being handled or
+			overridden by a new combo event.
+			a combo event is emitted even when there is no combo, in such case `K=null`
+		 */
+		var $=this;
+		var K = $.statemem.combo;
+		if(!K) K=null;
+
+		var tar1=$.states[$.frame.D.state];
+		if( tar1) var res1=tar1.call($,'combo',K);
+		var tar2=$.states['generic'];
+		if(!res1)
+		if( tar2) var res2=tar2.call($,'combo',K);
+		if( tar1) tar1.call($,'post_combo');
+		if( tar2) tar2.call($,'post_combo');
+		if( res1 || res2 ||
+			K==='left' || K==='right' || K==='up' || K==='down') //dir combos are not persistent
+			$.statemem.combo = null;
 	}
 
 	//setup for a match
@@ -3008,7 +3194,23 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		else
 			$.state_update('TU');
 
-		$.state_update('TU_nostuck');
+		//recovery
+		$.itr.lasthit--;
+		if( $.itr.lasthit<-3)
+		{
+			//if( $.health.fall>0 && $.health.fall<10) $.health.fall=0;
+			if( $.health.fall>0) $.health.fall += GC.recover.fall;
+			if( $.health.bdefend>0) $.health.bdefend += GC.recover.bdefend;
+		}
+
+		//attack rest
+		for( var I in $.itr.vrest)
+		{	//watch out that itr.vrest might grow very big
+			if( $.itr.vrest[I] > 0)
+				$.itr.vrest[I]--;
+		}
+		if( $.itr.arest > 0)
+			$.itr.arest--;
 	}
 
 	livingobject.prototype.state_update=function(event)
@@ -3020,7 +3222,9 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		var tar2=$.states[$.frame.D.state];
 		if( tar2) var res2=tar2.call($,event);
 		//
-		return res1 || res2;
+		if( tar1) var res3=tar1.call($,'post_'+event);
+		//
+		return res1 || res2 || res3;
 	}
 
 	livingobject.prototype.TU=function()
@@ -3399,203 +3603,11 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	return livingobject;
 });
 
-/*\
- * combo detector
- * - listen key events and detect combo from a controller
- * - maintains a clean sequence of pressed keys and fire events when combo is detected
- * - LF2, KOF style combos
- * - eliminating auto-repeated keys
-\*/
-
-define('F.core/combodec',[], function(){
-
-/*\
- * combodec
- [ class ]
- - controller (object) a reference to @controller
- - config (object)
- - combo (array) combo definition
-|	var con_config=
-|	{
-|		up:'h',down:'n',left:'b',right:'m',def:'v',jump:'f',att:'d'
-|		//,'control name':'control key',,,
-|	}
-|	var con = new controller(con_config);
-|	var dec_config=
-|	{
-|		timeout: 30,  //[optional] time before clearing the sequence buffer in terms of frames
-|		comboout: 15, //[optional] the max time interval between keys to make a combo,
-|			//an interrupt is inserted when comboout expires
-|		clear_on_combo: true, //[optional] if true, will clear the sequence buffer when a combo occur
-|		callback: dec_callback, //callback function when combo detected
-|		rp: {up:1,down:1,left:2,right:2,def:3,jump:1,att:5}
-|			//[optional] max repeat count of each key, unlimited if not stated
-|	};
-|	var combo = [
-|	{
-|		name: 'blast',	//combo name
-|		seq:  ['def','right','att'], //array of key sequence
-|		maxtime: 10 //[optional] the max allowed time difference between the first and last key input
-|		clear_on_combo: false, //[optional] override generic config
-|	} //,,,
-|	];
-|	var dec = new combodec ( con, dec_config, combo);
-|	function dec_callback(combo)
-|	{
-|		alert(combo);
-|	}
- * [example](../sample/combo.html)
- # <iframe src="../sample/combo.html" width="800" height="500"></iframe>
-\*/
-function combodec (controller, config, combo)
-{
-	/*\
-	 * combodec.time
-	 - (number) current time
-	 [ property ]
-	\*/
-	this.time=1;
-	/*\
-	 * combodec.timeout
-	 - (number) when to clear the sequence buffer
-	 [ property ]
-	\*/
-	this.timeout=0;
-	/*\
-	 * combodec.comboout
-	 - (number) when to interrupt the current combo
-	 [ property ]
-	\*/
-	this.comboout=0;
-	/*\
-	 * combodec.con
-	 - (object) parent controller
-	 [ property ]
-	\*/
-	this.con=controller;
-	/*\
-	 * combodec.seq
-	 - (array) the key input sequence. note that combodec logs key names rather than key stroke,
-	 * i.e. `up`,`down` rather than `w`,`s`
-	 - (object) each is `{k:key,t:time}`
-	 * 
-	 * will be cleared regularly as defined by `config.timeout` or `config.clear_on_combo`
-	 [ property ]
-	\*/
-	this.seq=new Array();
-	/*\
-	 * combodec.config
-	 - (object)
-	 [ property ]
-	\*/
-	this.config=config;
-	/*\
-	 * combodec.combo
-	 - (array) combo list
-	 [ property ]
-	\*/
-	this.combo=combo;
-	this.con.child.push(this);
-}
-
-/*\
- * combodec.key
- * supply keys to combodec
- [ method ]
- - k (string) key name
- - down (boolean)
- * note that it receives key name, i.e. `up`,`down` rather than `w`,`s`
-\*/
-combodec.prototype.key=function(K, down)
-{
-	if(!down)
-		return;
-
-	var seq=this.seq;
-
-	var push=true;
-	if( this.config.rp)
-	{	//detect repeated keys
-		for (var i=seq.length-1, cc=1; i>=0 && seq[i]==K; i--,cc++)
-			if( cc>=this.config.rp[K])
-				push=false;
-	}
-
-	//eliminate repeated key strokes by browser; discard keys that are already pressed down
-	if( this.con.state[K])
-		push=false;
-	//  remarks: opera linux has a strange behavior that repeating keys **do** fire keyup events
-
-	if( this.config.timeout)
-		this.timeout=this.time+this.config.timeout;
-	if( this.config.comboout)
-		this.comboout=this.time+this.config.comboout;
-
-	if( push)
-		seq.push({k:K,t:this.time});
-
-	if ( this.combo && push)
-	{	//detect combo
-		var C = this.combo;
-		for (var i in C)
-		{
-			var detected=true;
-			var j=seq.length-C[i].seq.length;
-			if( j<0) detected=false;
-			else for (var k=0; j<seq.length; j++,k++)
-			{
-				if( C[i].seq[k] !== seq[j].k ||
-					(C[i].maxtime && seq[seq.length-1].t-seq[j].t>C[i].maxtime))
-				{
-					detected=false;
-					break;
-				}
-			}
-			if( detected)
-			{
-				this.config.callback(C[i]);
-				if( C[i].clear_on_combo || (C[i].clear_on_combo!==false && this.config.clear_on_combo))
-					this.clear_seq();
-			}
-		}
-	}
-}
-
-/*\
- * combodec.clear_seq
- * clear the key sequence
- [ method ]
- * normally you would not need to call this manually
-\*/
-combodec.prototype.clear_seq=function()
-{
-	this.seq.length=0;
-	this.timeout=this.time-1;
-	this.comboout=this.time-1;
-}
-
-/*\
- * combodec.frame
- * a tick of time
- [ method ]
-\*/
-combodec.prototype.frame=function()
-{
-	if( this.time===this.timeout)
-		this.clear_seq();
-	if( this.time===this.comboout)
-		this.seq.push({k:'_',t:this.time});
-	this.time++;
-}
-
-return combodec;
-});
-
 /**	a LF2 character
  */
 
-define('LF/character',['LF/livingobject','LF/global','F.core/combodec','F.core/util','LF/util'],
-function(livingobject, Global, Fcombodec, Futil, util)
+define('LF/character',['LF/livingobject','LF/global','F.core/util','LF/util'],
+function(livingobject, Global, Futil, util)
 {
 	var GC=Global.gameplay;
 
@@ -3643,25 +3655,6 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					//$.trans.frame(999);
 				}
 			break;
-			case 'TU_nostuck':
-				//recovery
-				$.itr.lasthit--;
-				if( $.itr.lasthit<-3)
-				{
-					//if( $.health.fall>0 && $.health.fall<10) $.health.fall=0;
-					if( $.health.fall>0) $.health.fall += GC.recover.fall;
-					if( $.health.bdefend>0) $.health.bdefend += GC.recover.bdefend;
-				}
-
-				//attack rest
-				for( var I in $.itr.vrest)
-				{	//watch out that itr.vrest might grow very big
-					if( $.itr.vrest[I] > 0)
-						$.itr.vrest[I]--;
-				}
-				if( $.itr.arest > 0)
-					$.itr.arest--;
-			break;
 			case 'transit':
 				//dynamics: position, friction, gravity
 				$.mech.dynamics(); //any further change in position will not be updated on screen until next TU
@@ -3674,29 +3667,18 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				case 'run':
 				break;
 				default:
-					var tag = Global.combo_tag[K];
-					if( tag && $.frame.D[tag])
+					if( K==='def')  K='hit_d';
+					if( K==='jump') K='hit_j';
+					if( K==='att')  K='hit_a';
+					if( $.frame.D[K])
 					{
-						if( !$.id_update('combo',K,tag))
-						{
-							$.trans.frame($.frame.D[tag], 11);
-							return 1;
-						}
+						$.trans.frame($.frame.D[K], 11);
+						return 1;
 					}
 				}
 			break;
 			case 'post_combo': //after state specific processing
 				$.pre_interaction();
-			break;
-			case 'state_exit':
-				if( $.combo_buffer)
-					switch ($.combo_buffer)
-					{
-						case 'def': case 'jump': case 'att': case 'run':
-							//basic actions cannot transfer across states
-							$.combo_buffer = null;
-						break;
-					}
 			break;
 		}},
 
@@ -3987,8 +3969,6 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 			case 'frame':
 				$.statemem.frameTU=true;
-				if( $.frame.PN===80 || $.frame.PN===81) //after jump attack
-					$.statemem.attlock=2;
 			break;
 
 			case 'TU':
@@ -4004,16 +3984,14 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						$.ps.vy= $.data.bmp.jump_height; //upward force
 					}
 				}
-				if( $.statemem.attlock)
-					$.statemem.attlock--;
 			break;
 
 			case 'combo':
-				if( (K==='att' || $.con.state.att) && !$.statemem.attlock)
+				if( K==='att')
 				{
 					/** a transition to jump_attack can only happen after entering frame 212.
 					if an 'att' key event arrives while in frame 210 or 211,
-					the jump attack event will be pended and be performed on 212
+					the jump attack event should be pended and be performed on 212
 					 */
 					if( $.frame.N===212)
 					{
@@ -4027,8 +4005,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						}
 						else
 							$.trans.frame(80, 10); //jump attack
-						if( K==='att')
-							return 1;
+						return 1;
 					}
 				}
 			break;
@@ -4044,7 +4021,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			break;
 
 			case 'combo':
-				if( K==='att' || $.con.state.att)
+				if( K==='att')
 				{
 					if( $.proper('dash_backattack') || //back attack
 						$.dirh()===($.ps.vx>0?1:-1)) //if not turning back
@@ -4054,8 +4031,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						else
 							$.trans.frame(90, 10);
 						$.switch_dir=false;
-						if( K==='att')
-							return 1;
+						return 1;
 					}
 				}
 				if( K==='left' || K==='right')
@@ -4495,7 +4471,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						var dx=0;
 						if($.con.state.left)  dx-=1;
 						if($.con.state.right) dx+=1;
-						if( dx || $.ps.vx!==0)
+						if( dx)
 						{
 							$.trans.frame(213, 10);
 							$.switch_dir_fun(dx===1?'right':'left');
@@ -4573,7 +4549,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		'default':function()
 		{
 		},
-		'1': function(event,K,tag) //deep
+		'1': function(event) //deep
 		{
 			var $=this;
 			switch (event)
@@ -4598,15 +4574,6 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			case 'state15_crouch':
 				if( $.frame.PN>=267 && $.frame.PN<=272)
 					$.trans.inc_wait(-1);
-			break;
-			case 'combo':
-				if( tag==='hit_Fj')
-				{
-					if( K==='D>J' || K==='D>AJ')
-						$.switch_dir_fun('right');
-					else
-						$.switch_dir_fun('left');
-				}
 			break;
 			}
 		}
@@ -4646,88 +4613,10 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		else
 			$.id_update=idupdates['default'];
 		$.states_switch_dir = states_switch_dir;
-		$.mech.floor_xbound = true;
-		$.con = config.controller;
-		if( $.con)
-		{
-			function combo_event(kobj)
-			{
-				var K=kobj.name;
-				switch (K)
-				{
-					case 'left': case 'right':
-						if( $.switch_dir)
-							$.switch_dir_fun(K);
-				}
-				$.combo_buffer = K;
-			}
-			var dec_con = //combo detector
-			{
-				clear_on_combo: true,
-				callback: combo_event //callback function when combo detected
-			}
-			var combo_list = [
-				{ name:'left',	seq:['left'],	clear_on_combo:false},
-				{ name:'right',	seq:['right'],	clear_on_combo:false},
-				{ name:'up',	seq:['up'],		clear_on_combo:false},
-				{ name:'down',	seq:['down'],	clear_on_combo:false},
-				{ name:'def',	seq:['def'],	clear_on_combo:false},
-				{ name:'jump',	seq:['jump'],	clear_on_combo:false},
-				{ name:'att',	seq:['att'],	clear_on_combo:false},
-				{ name:'run',	seq:['right','right'],	maxtime:9},
-				{ name:'run',	seq:['left','left'],	maxtime:9}
-				//plus those defined in Global.combo_list
-			];
-			$.combodec = new Fcombodec($.con, dec_con, combo_list.concat(Global.combo_list));
-		}
-		$.health.bdefend=0;
-		$.health.fall=0;
-		$.health.hp=$.health.hp_full= $.proper('hp') || GC.default.health.hp_full;
-		$.health.mp=$.health.mp_full= $.proper('mp') || GC.default.health.mp_full;
-		$.trans.frame=function(next,au)
-		{
-			if( next!==0)
-			{
-				if( next===999)
-					next=0;
-				var nextF = $.data.frame[next];
-				if( nextF) //TODO: test for mp
-				{
-					this.set_next(next,au);
-					this.set_wait(0,au);
-				}
-			}
-		}
 		$.setup();
 	}
 	character.prototype = new livingobject();
 	character.prototype.constructor = character;
-
-	//to emit a combo event
-	character.prototype.combo_update = function()
-	{		
-		/**	different from `state_update`, current state receive the combo event first,
-			and only if it returned falsy result, the combo event is passed to the generic state.
-			if the combo event is not consumed, it is stored in state memory,
-			resulting in 1 combo event being emited every frame until it is being handled or
-			overridden by a new combo event.
-			a combo event is emitted even when there is no combo, in such case `K=null`
-		 */
-		var $=this;
-		var K = $.combo_buffer;
-		if(!K) K=null;
-
-		var tar1=$.states[$.frame.D.state];
-		if( tar1) var res1=tar1.call($,'combo',K);
-		var tar2=$.states['generic'];
-		if(!res1)
-		if( tar2) var res2=tar2.call($,'combo',K);
-		if( tar1) tar1.call($,'post_combo');
-		if( tar2) tar2.call($,'post_combo');
-		if( res1 || res2 ||
-			K==='left' || K==='right' || K==='up' || K==='down') //dir combos are not persistent
-			$.combo_buffer = null;
-	}
 
 	/** @protocol caller hits callee
 		@param ITR the itr object in data
@@ -5445,8 +5334,6 @@ function weapon(type)
 				}
 			}
 		}
-		if( result.thrown)
-			$.shadow.show();
 		return result;
 	}
 
@@ -5459,7 +5346,6 @@ function weapon(type)
 		if( dvy) $.ps.vy=dvy * 0.2;
 		$.ps.zz=0;
 		$.trans.frame(999);
-		$.shadow.show();
 	}
 
 	typeweapon.prototype.pick=function(att)
@@ -5469,7 +5355,6 @@ function weapon(type)
 		{
 			$.holder=att;
 			$.team=att.team;
-			$.shadow.hide();
 			return true;
 		}
 		return false;
@@ -6459,7 +6344,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		{	//create an empty background
 			$.id = -1;
 			$.name = 'empty background';
-			$.width = 1500;
+			$.width = GA.window.width;
 			$.zboundary = [0,300];
 			$.height=$.zboundary[1]-$.zboundary[0];
 			return;
@@ -6467,26 +6352,12 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		$.layers;
 		$.floor = config.floor;
 		$.data = data;
-		$.name = data.name.replace(/_/g,' ');
+		$.name = data.name;
 		$.id = id;
 
 		$.zboundary=data.zboundary;
 		$.width=data.width;
 		$.height=$.zboundary[1]-$.zboundary[0];
-		$.shadow={
-			x:0,y:0, //offset x,y
-			img:data.shadow
-		};
-		(function(){
-			var sp = new Fsprite({img:data.shadow});
-			sp.img[0].addEventListener('load', onload, true);
-			function onload()
-			{
-				$.shadow.x = (this.naturalWidth||this.width)/2;
-				$.shadow.y = (this.naturalHeight||this.height)/2;
-				sp.img[0].removeEventListener('load', onload, true);
-			}
-		}());
 
 		$.floor.style.width=$.width+'px';
 
@@ -6600,7 +6471,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		{
 			var $=this;
 			for( var i=0; i<$.layers.length; i++)
-				$.layers[i].div.style.left=-X*$.layers[i].ratio+'px';
+				$.layers[i].div.style.left=Math.round(-X*$.layers[i].ratio)+'px';
 		}
 	}
 
@@ -6749,14 +6620,11 @@ return SeedableRandom;
  * a match is a generalization above game modes (e.g. VSmode, stagemode, battlemode)
 \*/
 
-define('LF/match',['F.core/util','F.core/controller','F.core/sprite',
-'LF/factories','LF/scene','LF/background','LF/third_party/random','LF/util',
-'LF/global'],
-function(Futil,Fcontroller,Fsprite,
-factory,Scene,Background,Random,util,
-Global)
+define('LF/match',['F.core/util','F.core/controller',
+'LF/factories','LF/scene','LF/background','LF/third_party/random','LF/util'],
+function(Futil,Fcontroller,
+factory,Scene,Background,Random,util)
 {
-	var GA=Global.application;
 	/*\
 	 * match
 	 [ class ]
@@ -6768,6 +6636,7 @@ Global)
 	 |	package	//the content package
 	 |	}
 	\*/
+
 	function match(config)
 	{
 		var $=this;
@@ -6780,30 +6649,6 @@ Global)
 		if( !$.config)
 			$.config = {};
 		$.time;
-
-		//UI
-		if( util.div('pauseMessage'))
-		{
-			$.pause_mess = new Fsprite({
-				inplace_div: util.div('pauseMessage'),
-				img: $.data.UI.pause
-			});
-			$.pause_mess.hide();
-		}
-		if( util.div('panel'))
-		{
-			$.panel=[];
-			for( var i=0; i<8; i++)
-			{
-				var pane = new Fsprite({
-					canvas: util.div('panel'),
-					img: $.data.UI.panel.pic,
-					wh: 'fit'
-				});
-				pane.set_x_y(GA.panel.pane.width*(i%4), GA.panel.pane.height*Math.floor(i/4));
-				$.panel.push(pane);
-			}
-		}
 	}
 
 	match.prototype.create=function(setting)
@@ -6928,7 +6773,6 @@ Global)
 		$.emit_event('TU');
 		$.for_all('TU');
 		$.background.TU();
-		$.show_hp();
 	}
 
 	match.prototype.emit_event=function(E)
@@ -6982,41 +6826,6 @@ Global)
 			char.set_pos( pos[i].x, pos[i].y, pos[i].z); //TODO: proper player placements
 			var uid = $.scene.add(char);
 			$.character[uid] = char;
-			//pane
-			var spic = new Fsprite({
-				canvas: $.panel[i].el,
-				img: pdata.bmp.small,
-				wh: 'fit'
-			});
-			spic.set_x_y($.data.UI.panel.x,$.data.UI.panel.y);
-			$.panel[i].hp_max = new Fsprite({canvas: $.panel[i].el});
-			$.panel[i].hp_max.set_x_y( $.data.UI.panel.hpx, $.data.UI.panel.hpy);
-			$.panel[i].hp_max.set_w_h( $.data.UI.panel.hpw, $.data.UI.panel.hph);
-			$.panel[i].hp_max.el.style.background = $.data.UI.panel.hp_dark;
-			$.panel[i].hp = new Fsprite({canvas: $.panel[i].el});
-			$.panel[i].hp.set_x_y( $.data.UI.panel.hpx, $.data.UI.panel.hpy);
-			$.panel[i].hp.set_w_h( $.data.UI.panel.hpw, $.data.UI.panel.hph);
-			$.panel[i].hp.el.style.background = $.data.UI.panel.hp_bright;
-			$.panel[i].mp_max = new Fsprite({canvas: $.panel[i].el});
-			$.panel[i].mp_max.set_x_y( $.data.UI.panel.mpx, $.data.UI.panel.mpy);
-			$.panel[i].mp_max.set_w_h( $.data.UI.panel.mpw, $.data.UI.panel.mph);
-			$.panel[i].mp_max.el.style.background = $.data.UI.panel.mp_dark;
-			$.panel[i].mp = new Fsprite({canvas: $.panel[i].el});
-			$.panel[i].mp.set_x_y( $.data.UI.panel.mpx, $.data.UI.panel.mpy);
-			$.panel[i].mp.set_w_h( $.data.UI.panel.mpw, $.data.UI.panel.mph);
-			$.panel[i].mp.el.style.background = $.data.UI.panel.mp_bright;
-			$.panel[i].hp.hide();
-			$.panel[i].mp.hide();
-		}
-	}
-
-	match.prototype.show_hp=function()
-	{
-		var $=this;
-		for( var i in $.character)
-		{
-			var ch = $.character[i];
-			$.panel[i].hp.set_w(ch.health.hp/ch.health.hp_full*$.data.UI.panel.hpw);
 		}
 	}
 
@@ -7126,10 +6935,6 @@ Global)
 									$.time.paused=true;
 							break;
 						}
-						if( $.time.paused)
-							$.pause_mess.show();
-						else
-							$.pause_mess.hide();
 					}
 				}
 			});
@@ -7255,7 +7060,7 @@ define('F.core/css!LF/application.css', ['F.core/css-embed'],
 function(embed)
 {
 	embed(
-	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:22px; } .LFwindow {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .LFviewerContainer .LFwindow {  height:400px; } .LFwindowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .LFwindowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .LFwindowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .LFwindowCaptionButton, .LFProjectFbutton {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .LFwindowCaptionButton:hover {  background:#248ce5; } .LFProjectFbutton {  background:#7c547c; } .LFProjectFbutton:hover {  background:#9d6e9d; } .LFkeychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:10000;  font-size:12px;  padding:10px; } .LFpanel {  position:absolute;  left:0; top:0;  width:100%; height:128px;  background:#324d9a;  z-index:2; } .LFbackground {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .LFviewerContainer .LFbackground {  top:-128px; } .LFbackgroundLayer {  position:absolute;  left:0; top:0; } .LFfloorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .LFviewerContainer .LFfloorHolder {  top:-128px; } .LFfloor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .LFtopStatus, .LFbottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .LFfps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .LFfootnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .LFbackgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .LFbackgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .LFviewerContainer .LFbackgroundScroll {  top:400px;  z-index:10; } .LFwindowMessage {  /*http://www.brunildo.org/test/img_center.html*/  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:100; } .LFpauseMessage {     display: table-cell;     text-align: center;     vertical-align: middle;  position:absolute;  left:0; top:0;  width:100%; height:100%; } .LFpauseMessage * {     vertical-align: middle; } .LFpauseMessage {     display: block; } .LFpauseMessage span {     display: inline-block;     height: 100%;     width: 1px; } '
+	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:22px; } .LFwindow {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .LFviewerContainer .LFwindow {  height:400px; } .LFwindowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .LFwindowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .LFwindowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .LFwindowCaptionButton, .LFProjectFbutton {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .LFwindowCaptionButton:hover {  background:#248ce5; } .LFProjectFbutton {  background:#7c547c; } .LFProjectFbutton:hover {  background:#9d6e9d; } .LFkeychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:10000;  font-size:12px;  padding:10px; } .LFpanel {  position:absolute;  left:0; top:0;  width:100%; height:128px;  background:#324d9a;  z-index:2; } .LFbackground {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .LFviewerContainer .LFbackground {  top:-128px; } .LFbackgroundLayer {  position:absolute;  left:0; top:0; } .LFfloorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .LFviewerContainer .LFfloorHolder {  top:-128px; } .LFfloor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .LFtopStatus, .LFbottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .LFfps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .LFfootnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .LFbackgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .LFbackgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .LFviewerContainer .LFbackgroundScroll {  top:400px;  z-index:10; } '
 	);
 	return true;
 });
@@ -7278,20 +7083,30 @@ function(Fcontroller,Fsprite,Fsupport,
 package,Match,Keychanger,
 util,buildinfo){
 
-	//analytics
-	if( window.location.href.indexOf('http')===0)
+	util.setup_resourcemap(package,Fsprite);
+
+	var control_con1 =
 	{
-		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-		})(window,document,'script','http://www.google-analytics.com/analytics.js','ga');
-		ga('create', 'UA-37320960-5', 'tyt2y3.github.io');
-		ga('send', 'pageview');
+		up:'u',down:'m',left:'h',right:'k',def:',',jump:'i',att:'j'
+	};
+	var control_con2 =
+	{
+		up:'w',down:'x',left:'a',right:'d',def:'z',jump:'q',att:'s'
+	};
+	var control1 = new Fcontroller(control_con1);
+	var control2 = new Fcontroller(control_con2);
+	control1.sync=true;
+	control2.sync=true;
+
+	var keychanger = util.div('keychanger');
+	keychanger.style.display='none';
+	Keychanger(keychanger, [control1, control2]);
+	keychanger.style.backgroundColor='#FFF';
+	util.div('keychangerButton').onclick=function()
+	{
+		keychanger.style.display= keychanger.style.display===''?'none':'';
 	}
 
-	//
-	// UI window
-	//
 	var maximized=undefined;
 	function resizer(ratio)
 	{
@@ -7313,9 +7128,6 @@ util,buildinfo){
 			var link=document.createElement('a');
 			link.href = 'demo4.html?max';
 			link.target='_blank';
-			link.style.display='none';
-			var body = document.getElementsByTagName('body')[0];
-			body.appendChild(link);
 			link.click();
 		}
 	else
@@ -7349,33 +7161,6 @@ util,buildinfo){
 	util.div('footnote').innerHTML+='; '+
 		(buildinfo.timestamp==='unbuilt'?'unbuilt demo':'built on: '+buildinfo.timestamp);
 
-	//
-	// F.LF stuff
-	//
-	util.setup_resourcemap(package,Fsprite);
-
-	var control_con1 =
-	{
-		up:'u',down:'m',left:'h',right:'k',def:',',jump:'i',att:'j'
-	};
-	var control_con2 =
-	{
-		up:'w',down:'x',left:'a',right:'d',def:'z',jump:'q',att:'s'
-	};
-	var control1 = new Fcontroller(control_con1);
-	var control2 = new Fcontroller(control_con2);
-	control1.sync=true;
-	control2.sync=true;
-
-	var keychanger = util.div('keychanger');
-	keychanger.style.display='none';
-	Keychanger(keychanger, [control1, control2]);
-	keychanger.style.backgroundColor='#FFF';
-	util.div('keychangerButton').onclick=function()
-	{
-		keychanger.style.display= keychanger.style.display===''?'none':'';
-	}
-
 	var match = new Match
 	({
 		stage: util.div('floor'),
@@ -7406,6 +7191,17 @@ util,buildinfo){
 		},
 		background: {id:1}
 	});
+
+	//analytics
+	if( window.location.href.indexOf('http')===0)
+	{
+		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		})(window,document,'script','http://www.google-analytics.com/analytics.js','ga');
+		ga('create', 'UA-37320960-5', 'tyt2y3.github.io');
+		ga('send', 'pageview');
+	}
 
 });
 
