@@ -34,6 +34,8 @@ define({
 		{id:10,file:'bg/template/1/bg.js'}
 	],
 
+	UI: {file:'data/UI.js'},
+
 	config:
 	[
 		{id:'100~199', then:'drop weapon'}
