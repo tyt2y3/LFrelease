@@ -4107,11 +4107,13 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						{//turn back
 							if( $.frame.N===213) $.trans.frame(214, 0);
 							if( $.frame.N===216) $.trans.frame(217, 0);
+							$.switch_dir_fun(K);
 						}
 						else
 						{//turn to front
 							if( $.frame.N===214) $.trans.frame(213, 0);
 							if( $.frame.N===217) $.trans.frame(216, 0);
+							$.switch_dir_fun(K);
 						}
 						return 1;
 					}
@@ -4661,7 +4663,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		'2': false,
 		'3': false,
 		'4': true,
-		'5': true,
+		'5': false,
 		'6': false,
 		'7': true,
 		'8': false,
