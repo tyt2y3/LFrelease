@@ -521,7 +521,7 @@ define('F.core/support',[],function()
 		el.parentNode.removeChild(el);
 	}());
 	//--] end
-	
+
 	//support requestAnimationFrame
 	//[--adapted from https://gist.github.com/1579671
 	// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
@@ -1119,12 +1119,15 @@ function sprite (config)
 		}
 	}
 
-	if( ((support.css3dtransform && !sp_masterconfig.disable_css3dtransform) ||
-		 (support.css2dtransform && !sp_masterconfig.disable_css2dtransform)) &&
-		!config.div)
+	if( (support.css3dtransform && !sp_masterconfig.disable_css3dtransform) ||
+		(support.css2dtransform && !sp_masterconfig.disable_css2dtransform))
 	{
-		this.el.style.left=0+'px';
-		this.el.style.top=0+'px';
+		if( !config.div)
+		{
+			this.el.style.left=0+'px';
+			this.el.style.top=0+'px';
+		}
+		this.x=0; this.y=0;
 	}
 }
 
@@ -1279,22 +1282,36 @@ if( support.css3dtransform && !sp_masterconfig.disable_css3dtransform)
 {
 	sprite.prototype.set_xy=function(P)
 	{
-		this.el.style[support.css3dtransform]= 'translate3d('+P.x+'px,'+P.y+'px, 0px) ';
+		this.x=P.x; this.y=P.y;
+		this.el.style[support.css3dtransform]= 'translate3d('+P.x+'px,'+P.y+'px, 0px) '+(this.mirrored?'scaleX(-1) ':'');
 	}
 	sprite.prototype.set_x_y=function(x,y)
 	{
-		this.el.style[support.css3dtransform]= 'translate3d('+x+'px,'+y+'px, 0px) ';
+		this.x=x; this.y=y;
+		this.el.style[support.css3dtransform]= 'translate3d('+x+'px,'+y+'px, 0px) '+(this.mirrored?'scaleX(-1) ':'');
+	}
+	sprite.prototype.mirror=function(m)
+	{
+		this.mirrored=m;
+		this.set_x_y(this.x,this.y);
 	}
 }
 else if( support.css2dtransform && !sp_masterconfig.disable_css2dtransform)
 {
 	sprite.prototype.set_xy=function(P)
 	{
-		this.el.style[support.css2dtransform]= 'translate('+P.x+'px,'+P.y+'px) ';
+		this.x=P.x; this.y=P.y;
+		this.el.style[support.css2dtransform]= 'translate('+P.x+'px,'+P.y+'px) '+(this.mirrored?'scaleX(-1) ':'');
 	}
 	sprite.prototype.set_x_y=function(x,y)
 	{
-		this.el.style[support.css2dtransform]= 'translate('+x+'px,'+y+'px) ';
+		this.x=x; this.y=y;
+		this.el.style[support.css2dtransform]= 'translate('+x+'px,'+y+'px) '+(this.mirrored?'scaleX(-1) ':'');
+	}
+	sprite.prototype.mirror=function(m)
+	{
+		this.mirrored=m;
+		this.set_x_y(this.x,this.y);
 	}
 }
 else
@@ -1308,6 +1325,10 @@ else
 	{
 		this.el.style.left=x+'px';
 		this.el.style.top=y+'px';
+	}
+	sprite.prototype.mirror=function(m)
+	{
+		//not supported
 	}
 }
 /*\
@@ -2072,10 +2093,6 @@ animator.prototype.set_frame=function(i)
 	this.I=i;
 	this.show_frame(i);
 }
-animator.prototype.hmirror=function(val) //legacy
-{
-	this.horimirror = val;
-}
 animator.prototype.show_frame=function(i)
 {
 	var c=this.config;
@@ -2228,17 +2245,7 @@ function sprite (bmp, parent)
 		}
 		if( imgpath==='')
 			console.log( 'cannot find img path in data:\n'+JSON.stringify(bmp.file[i]) );
-		sp.add_img( imgpath, i+'r');
-		if( bmp.file[i]['mirror']) //extended standard
-		{
-			if( bmp.file[i]['mirror'] !== 'none')
-				sp.add_img( bmp.file[i]['mirror'], i+'l');
-		}
-		else
-		{
-			var ext=imgpath.lastIndexOf('.');
-			sp.add_img( imgpath.slice(0,ext)+'_mirror'+imgpath.slice(ext), i+'l');
-		}
+		sp.add_img( imgpath, i);
 
 		var ani_con=
 		{
@@ -2251,15 +2258,6 @@ function sprite (bmp, parent)
 			borderright: 1,
 			borderbottom: 1
 		};
-		/* var ani_mirror_con=
-		{
-			x:(bmp.file[i].row-1)*(bmp.file[i].w+1),  y:0,
-			w:-bmp.file[i].w-1, h:bmp.file[i].h+1,
-			gx:bmp.file[i].row, gy:bmp.file[i].col,
-			tar:sp,
-			borderleft: 1,
-			borderbottom: 1
-		}; */
 		ani.length++;
 		ani[i] = new Fanimator(ani_con);
 	}
@@ -2297,8 +2295,7 @@ sprite.prototype.show_pic = function(I)
 			break;
 	}
 	this.cur_img = slot;
-	this.sp.switch_img(this.cur_img + (this.dir==='right' ? 'r':'l'));
-	this.ani[this.cur_img].hmirror(this.dir==='left');
+	this.sp.switch_img(this.cur_img);
 	this.ani[this.cur_img].set_frame(I);
 	this.w = this.ani[this.cur_img].config.w;
 	this.h = this.ani[this.cur_img].config.h;
@@ -2311,11 +2308,11 @@ sprite.prototype.show_pic = function(I)
 \*/
 sprite.prototype.switch_lr = function(dir) //switch to `dir`
 {
-	var I = this.ani[this.cur_img].I;
-	this.dir=dir;
-	this.sp.switch_img(this.cur_img + (this.dir==='right' ? 'r':'l'));
-	this.ani[this.cur_img].hmirror(this.dir==='left');
-	this.ani[this.cur_img].set_frame(I);
+	if( dir!==this.dir)
+	{
+		this.dir=dir;
+		this.sp.mirror(dir==='left');
+	}
 }
 /*\
  * sprite.set_xy
@@ -4781,7 +4778,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 							$.switch_dir_fun(K);
 				}
 				$.combo_buffer.combo = K;
-				$.combo_buffer.timeout = 5;
+				$.combo_buffer.timeout = 10;
 			}
 			var dec_con = //combo detector
 			{
@@ -6622,7 +6619,10 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			x:0,y:0, //offset x,y
 			img:data.shadow
 		};
-		$.dropframe = 1;
+		if( Fsupport.css3dtransform)
+			$.dropframe = 0;
+		else
+			$.dropframe = 1;
 		(function(){
 			var sp = new Fsprite({img:data.shadow});
 			sp.img[0].addEventListener('load', onload, true);
@@ -6737,7 +6737,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		{
 			var $=this;
 			for( var i=0; i<$.layers.length; i++)
-				$.layers[i].div.style[Fsupport.css3dtransform]= 'translate3d('+(-X*$.layers[i].ratio)+'px,0px,0px) ';
+				$.layers[i].div.style[Fsupport.css3dtransform]= 'translate3d('+-Math.floor(X*$.layers[i].ratio)+'px,0px,0px) ';
 		}
 	}
 	else if( Fsupport.css2dtransform)
@@ -6746,7 +6746,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		{
 			var $=this;
 			for( var i=0; i<$.layers.length; i++)
-				$.layers[i].div.style[Fsupport.css2dtransform]= 'translate('+(-X*$.layers[i].ratio)+'px,0px) ';
+				$.layers[i].div.style[Fsupport.css2dtransform]= 'translate('+-Math.floor(X*$.layers[i].ratio)+'px,0px) ';
 		}
 	}
 	else
@@ -6755,7 +6755,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		{
 			var $=this;
 			for( var i=0; i<$.layers.length; i++)
-				$.layers[i].div.style.left=-X*$.layers[i].ratio+'px';
+				$.layers[i].div.style.left=-Math.floor(X)*$.layers[i].ratio+'px';
 		}
 	}
 
@@ -6766,7 +6766,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		var $=this;
 		if( $.camera_locked)
 			return;
-		if( $.cami++%$.dropframe!==0)
+		if( $.cami++%($.dropframe+1)!==0)
 			return;
 		/** algorithm by Azriel
 			http://www.lf-empire.de/forum/archive/index.php/thread-4597.html
@@ -6787,10 +6787,10 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		var xLimit= (facing*screenW/24)+(avgX-halfW);
 		if( xLimit < 0) xLimit=0;
 		if( xLimit > $.width-screenW) xLimit = $.width-screenW;
-		var spdX = (xLimit - $.camerax) * GA.camera.speed_factor * $.dropframe;
+		var spdX = (xLimit - $.camerax) * GA.camera.speed_factor * ($.dropframe+1);
 		if( spdX!==0)
 		{
-			if( -0.2<spdX && spdX<0.2)
+			if( -0.05<spdX && spdX<0.05)
 				$.camerax = xLimit;
 			else
 				$.camerax = $.camerax + spdX;
@@ -7435,7 +7435,7 @@ define('F.core/css!LF/application.css', ['F.core/css-embed'],
 function(embed)
 {
 	embed(
-	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:22px; } .LFwindow {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .LFviewerContainer .LFwindow {  height:400px; } .LFwindowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .LFwindowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .LFwindowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .LFwindowCaptionButton, .LFProjectFbutton {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .LFwindowCaptionButton:hover {  background:#248ce5; } .LFProjectFbutton {  background:#7c547c; } .LFProjectFbutton:hover {  background:#9d6e9d; } .LFkeychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:10000;  font-size:12px;  padding:10px; } .LFpanel {  position:absolute;  left:0; top:0;  width:100%; height:128px;  background:#324d9a;  z-index:2; } .LFbackground {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .LFviewerContainer .LFbackground {  top:-128px; } .LFbackgroundLayer {  position:absolute;  left:0; top:0; } .LFfloorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .LFviewerContainer .LFfloorHolder {  top:-128px; } .LFfloor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .LFtopStatus, .LFbottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .LFfps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .LFfootnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .LFbackgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .LFbackgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .LFviewerContainer .LFbackgroundScroll {  top:400px;  z-index:10; } .LFwindowMessage {  /*http://www.brunildo.org/test/img_center.html*/  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:100; } .LFpauseMessage {     display: table-cell;     text-align: center;     vertical-align: middle;  position:absolute;  left:0; top:0;  width:100%; height:100%; } .LFpauseMessage * {     vertical-align: middle; } .LFpauseMessage {     display: block; } .LFpauseMessage span {     display: inline-block;     height: 100%;     width: 1px; } '
+	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .LFwindow {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .LFviewerContainer .LFwindow {  height:400px; } .LFwindowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .LFwindowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .LFwindowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .LFwindowCaptionButton, .LFProjectFbutton {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .LFwindowCaptionButton:hover {  background:#248ce5; } .LFProjectFbutton {  background:#7c547c; } .LFProjectFbutton:hover {  background:#9d6e9d; } .LFkeychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:10000;  font-size:12px;  padding:10px; } .LFpanel {  position:absolute;  left:0; top:0;  width:100%; height:128px;  background:#324d9a;  z-index:2; } .LFbackground {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .LFviewerContainer .LFbackground {  top:-128px; } .LFbackgroundLayer {  position:absolute;  left:0; top:0; } .LFfloorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .LFviewerContainer .LFfloorHolder {  top:-128px; } .LFfloor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .LFtopStatus, .LFbottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .LFfps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .LFfootnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .LFbackgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .LFbackgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .LFviewerContainer .LFbackgroundScroll {  top:400px;  z-index:10; } .LFwindowMessageHolder {  /*http://www.brunildo.org/test/img_center.html*/  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:100; } .LFwindowMessage {     display: table-cell;     text-align: center;     vertical-align: middle;  position:absolute;  left:0; top:0;  width:100%; height:100%; } .LFwindowMessage * {     vertical-align: middle; } .LFwindowMessage {     display: block; } .LFwindowMessage span {     display: inline-block;     height: 100%;     width: 1px; } .LFerrorMessage {  position:absolute;  left:0; top:128px;  color: #F00; } '
 	);
 	return true;
 });
@@ -7457,6 +7457,18 @@ requirejs(['F.core/controller','F.core/sprite','F.core/support',
 function(Fcontroller,Fsprite,Fsupport,
 package,Match,Keychanger,
 util,buildinfo){
+
+	//feature check
+	if( !Fsupport.css2dtransform && !Fsupport.css3dtransform)
+	{
+		var mess = document.createElement('div');
+		mess.innerHTML=
+			'Sorry, your browser does not support CSS transform.<br>'+
+			'Please update to a latest HTML5 browser.';
+		mess.className = 'LFerrorMessage';
+		util.div('windowMessageHolder').appendChild(mess);
+		return;
+	}
 
 	//analytics
 	if( window.location.href.indexOf('http')===0)

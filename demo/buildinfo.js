@@ -1,1 +1,1 @@
-define({ timestamp: "21:56:16, 30 September 2013" })
+define({ timestamp: "00:31:25, 01 October 2013" })
