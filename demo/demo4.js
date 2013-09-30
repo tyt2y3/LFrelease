@@ -396,15 +396,30 @@ define('F.core/support',[],function()
 	 * support
 	 * test for browser support of certain technologies, most code is adapted from other places.
 	 * including
-	 * - [Crafty/extensions.js](https://github.com/craftyjs/Crafty/blob/master/src/extensions.js)
+	 * - [http://davidwalsh.name/vendor-prefix](http://davidwalsh.name/vendor-prefix)
 	 * - [https://gist.github.com/3626934](https://gist.github.com/3626934)
 	 * - [https://gist.github.com/1579671](https://gist.github.com/3626934)
 	 * [example](../sample/support.html)
 	 # <iframe src="../sample/support.html" width="800" height="200"></iframe>
 	\*/
 	/*\
+	 * support.browser
+	 - (number) browser name
+	 [ property ]
+	\*/
+	/*\
+	 * support.browser_name
+	 - (number) browser name
+	 [ property ]
+	\*/
+	/*\
+	 * support.browser_version
+	 - (number) browser version string
+	 [ property ]
+	\*/
+	/*\
 	 * support.mobile
-	 - (string) mobile device name
+	 - (string) mobile device name, undefined if not on a mobile device
 	 [ property ]
 	\*/
 	/*\
@@ -413,8 +428,18 @@ define('F.core/support',[],function()
 	 [ property ]
 	\*/
 	/*\
-	 * support.version
-	 - (number) browser major version
+	 * support.prefix_dom
+	 - (string) browser prefix for DOM
+	 [ property ]
+	\*/
+	/*\
+	 * support.prefix_css
+	 - (string) browser prefix for css
+	 [ property ]
+	\*/
+	/*\
+	 * support.prefix_js
+	 - (string) browser prefix for js
 	 [ property ]
 	\*/
 	/*\
@@ -429,44 +454,42 @@ define('F.core/support',[],function()
 	 * support.css3dtransform
 	 - (string) if supported, style property name with correct prefix
 	 [ property ]
+	 | if( support.css3dtransform)
+	 | 	this.el.style[support.css3dtransform]= 'translate3d('+P.x+'px,'+P.y+'px, 0px) ';
 	\*/
 
 	//test for browser and device
-	//[--adapted from Crafty engine
-	//	https://github.com/craftyjs/Crafty/blob/master/src/extensions.js
 	(function(){		
 		var N= navigator.appName, ua= navigator.userAgent, tem;
 		var M= ua.match(/(opera|chrome|safari|firefox|msie)\/?\s*(\.?\d+(\.\d+)*)/i);
 		if(M && (tem= ua.match(/version\/([\.\d]+)/i))!= null) M[2]= tem[1];
 		M= M? [M[1], M[2]]: [N, navigator.appVersion,'-?'];
-		support.browser = M;
-		var ua = navigator.userAgent.toLowerCase();
-		var match = /(webkit)[ \/]([\w.]+)/.exec(ua) ||
-					/(o)pera(?:.*version)?[ \/]([\w.]+)/.exec(ua) ||
-					/(ms)ie ([\w.]+)/.exec(ua) ||
-					/(moz)illa(?:.*? rv:([\w.]+))?/.exec(ua) || [];
-		var mobile = /iPad|iPod|iPhone|Android|webOS|IEMobile/i.exec(ua);
+		support.browser = M[0];
+		support.browser_name = M[0];
+		support.browser_version = M[1];
+		var mobile = /iPad|iPod|iPhone|Android|webOS|IEMobile/i.exec(navigator.userAgent.toLowerCase());
 		support.mobile= mobile?mobile[0]:undefined;
-		support.prefix = (match[1] || match[0]);
-
-		if (support.prefix === "moz") support.prefix = "Moz";
-		if (support.prefix === "o") support.prefix = "O";
-
-		if (match[2]) {
-			//support.versionName = match[2];
-			support.version = +(match[2].split("."))[0];
-		}
+		//[--adapted from http://davidwalsh.name/vendor-prefix
+		var styles = window.getComputedStyle(document.documentElement, ''),
+			pre = (Array.prototype.slice
+				.call(styles)
+				.join('') 
+				.match(/-(moz|webkit|ms)-/) || (styles.OLink === '' && ['', 'o'])
+				)[1],
+			dom = ('WebKit|Moz|MS|O').match(new RegExp('(' + pre + ')', 'i'))[1];
+		support.prefix = dom;
+		support.prefix_dom = dom;
+		support.prefix_css = '-'+pre+'-';
+		support.prefix_js = pre[0].toUpperCase() + pre.substr(1);
+		//--]
 	}());
-	//--] end
 
 	//test for css 2d transform support
 	//[--adapted from https://gist.github.com/3626934
 	(function(){
-		support.css2dtransform=undefined;
-		support.css3dtransform=undefined;
 
-		var el = document.createElement('p'), t, has3d,
-		transforms = {
+		var el = document.createElement('p'), t, has3d;
+		var transforms = {
 			'WebkitTransform':'-webkit-transform',
 			'OTransform':'-o-transform',
 			'MSTransform':'-ms-transform',
@@ -489,7 +512,8 @@ define('F.core/support',[],function()
 
 				str = 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1)'
 				el.style[t] = str;
-				if( str===window.getComputedStyle(el).getPropertyValue( transforms[t] ))
+				//if( str===window.getComputedStyle(el).getPropertyValue( transforms[t] ))
+				if( window.getComputedStyle(el).getPropertyValue( transforms[t] ).indexOf('matrix3d')===0)
 					support.css3dtransform= t;
 			}
 		}
@@ -991,7 +1015,7 @@ define('F.core/resourcemap',['F.core/util'],function(Futil){
  * - display and control sprites on page using `<div>` and `<img>` tag
  * - multiple images for one sprite
  * - **not** using canvas for sprite animations
- * - support style left/top and CSS transform, depending on browser support
+ * - support style left/top and CSS 2d/3d transform, depending on browser support
 \*/
 define('F.core/sprite',['F.core/css!F.core/style.css','F.core/support','F.core/resourcemap','module'],
 function(css,support,resourcemap,module)
@@ -1005,22 +1029,21 @@ var sp_masterconfig = module.config() || {};
  [ class ]
  - config (object)
  * {
- - canvas (object) `div` DOM node to create and append sprites to
+ - canvas (object) `div` DOM node to create and append sprites to; __or__
  - div    (object) `div` DOM node, if specified, will use this `div` as sprite instead of creating a new one
- * you only choose between `canvas` or `div` option
- - wh     (object) width and height
+ - wh     (object) width and height; __or__
+ - wh     (string) 'fit' fit to image size
  - img    (object) image list
- *      {
- -      name (string) image path
- *      }
- * or
- - img    (string) if you have only one image
+ - { name (string) image path }; __or__
+ - img    (string) if you have only one image. in this case the image will be named '0'
  * }
+ * 
  * config is one time only and will be dumped, without keeping a reference, after constructor returns. that means it is okay to reuse config objects, in loops or other contexts.
 |	var sp_config=
 |	{
 |		canvas: canvas,    // create and append a div to this node
 |		wh: {x:100,y:100}, // width and height
+|		wh: 'fit',         // OR fit to image size
 |		img: 'test_sprite.png' // image path
 |	}
 |	var sp1 = new sprite(sp_config);
@@ -1032,6 +1055,11 @@ function sprite (config)
 	this.ID=sp_count;
 	sp_count++;
 
+	/*\
+	 * sprite.el
+	 [ property ]
+	 * the `div` element
+	\*/
 	if( config.div)
 	{
 		this.el = config.div;
@@ -1050,13 +1078,22 @@ function sprite (config)
 	else
 	{
 		this.el = document.createElement('div');
-		//this.el.setAttribute('class','F_sprite');
 		this.el.className = 'F_sprite';
 		if( config.canvas)
 			config.canvas.appendChild(this.el);
 	}
 
+	/*\
+	 * sprite.img
+	 [ property ]
+	 * the img list
+	\*/
 	this.img={};
+	/*\
+	 * sprite.cur_img
+	 [ property ]
+	 * name of current image
+	\*/
 	this.cur_img=null;
 
 	if( config.wh==='fit')
@@ -1082,7 +1119,9 @@ function sprite (config)
 		}
 	}
 
-	if( support.css2dtransform && !config.div)
+	if( ((support.css3dtransform && !sp_masterconfig.disable_css3dtransform) ||
+		 (support.css2dtransform && !sp_masterconfig.disable_css2dtransform)) &&
+		!config.div)
 	{
 		this.el.style.left=0+'px';
 		this.el.style.top=0+'px';
@@ -1099,12 +1138,13 @@ function sprite (config)
  = config (object) if get
  * the schema is:
  * {
- - baseUrl (string) base url prepended to all image paths
+ - baseUrl (string) base url prepended to all image paths; __or__
  - resourcemap (object) a @resourcemap definition
  * }
  * choose only one of `baseUrl` or `resourcemap`, they are two schemes of resource url resolution. `baseUrl` simply prepend a string before every url, while `resourcemap` is a general solution. if set, this option will take effect on the next `add_img` or `sprite` creation.
  * 
- * because css2dtransform support is built into prototype of `sprite` during module definition, `disable_css2dtransform` can only be set using requirejs.config __before any__ module loading
+ * because css transform support is built into prototype of `sprite` during module definition, `disable_css2dtransform` can only be set using requirejs.config __before any__ module loading
+ * 
  * example:
 |	requirejs.config(
 |	{
@@ -1115,7 +1155,6 @@ function sprite (config)
 |			'F.core/sprite':
 |			{
 |				baseUrl: '../sprites/',
-|				resourcemap: map_def,
 |				disable_css2dtransform: false, //null by default
 |				disable_css3dtransform: false  //null by default
 |			}
@@ -1191,6 +1230,18 @@ sprite.resolve_resource=function(res)
  - w (number)
  - h (number)
 \*/
+/*\
+ * sprite.set_w
+ [ method ]
+ * set width
+ - w (number)
+\*/
+/*\
+ * sprite.set_h
+ [ method ]
+ * set height
+ - h (number)
+\*/
 sprite.prototype.set_wh=function(P)
 {
 	this.el.style.width=P.x+'px';
@@ -1222,6 +1273,7 @@ sprite.prototype.set_h=function(h)
  * set x and y
  - x (number)
  - y (number)
+ * will use css3dtransform, css2dtransform and csslefttop automatically, depending on browser support
 \*/
 if( support.css3dtransform && !sp_masterconfig.disable_css3dtransform)
 {
@@ -2650,12 +2702,12 @@ mech.prototype.dynamics= function()
 		ps.sy = ps.y - fD.centery;
 	}
 
-	sp.set_x_y(ps.sx, ps.sy+ps.sz); //projection onto screen
-	sp.set_z(ps.sz+ps.zz); //z ordering
+	sp.set_x_y(Math.floor(ps.sx), Math.floor(ps.sy+ps.sz)); //projection onto screen
+	sp.set_z(Math.floor(ps.sz+ps.zz)); //z ordering
 	if( this.sha)
 	{
-		this.sha.set_x_y(ps.x-this.bg.shadow.x, ps.z-this.bg.shadow.y);
-		this.sha.set_z(ps.sz-1);
+		this.sha.set_x_y(Math.floor(ps.x-this.bg.shadow.x), Math.floor(ps.z-this.bg.shadow.y));
+		this.sha.set_z(Math.floor(ps.sz-1));
 	}
 
 	if( ps.y===0) //only when on the ground
@@ -3702,6 +3754,18 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				//recovery
 				if( $.health.fall>0) $.health.fall += GC.recover.fall;
 				if( $.health.bdefend>0) $.health.bdefend += GC.recover.bdefend;
+				//combo buffer
+				$.combo_buffer.timeout--;
+				if( $.combo_buffer.timeout===0)
+				{
+					switch ($.combo_buffer.combo)
+					{
+						case 'def': case 'jump': case 'att': case 'run':
+							$.combo_buffer.combo = null;
+						break;
+						//other combo is not cleared
+					}
+				}
 			break;
 			case 'transit':
 				//dynamics: position, friction, gravity
@@ -3715,6 +3779,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				case 'run':
 				break;
 				default:
+					//here is where D>A, D>J... etc handled
 					var tag = Global.combo_tag[K];
 					if( tag && $.frame.D[tag])
 					{
@@ -3730,14 +3795,13 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				$.pre_interaction();
 			break;
 			case 'state_exit':
-				if( $.combo_buffer)
-					switch ($.combo_buffer)
-					{
-						case 'def': case 'jump': case 'att': case 'run':
-							//basic actions cannot transfer across states
-							$.combo_buffer = null;
-						break;
-					}
+				switch ($.combo_buffer.combo)
+				{
+					case 'att': case 'run':
+						//cannot transfer across states
+						$.combo_buffer.combo = null;
+					break;
+				}
 			break;
 		}},
 
@@ -4079,7 +4143,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		{	var $=this;
 			switch (event) {
 			case 'state_entry':
-				$.ps.vx= $.dirh() * ($.data.bmp.dash_distance-1);
+				$.ps.vx= $.dirh() * ($.data.bmp.dash_distance-1) * ($.frame.N===213?1:-1);
 				$.ps.vz= $.dirv() * ($.data.bmp.dash_distancez-1);
 				$.ps.vy= $.data.bmp.dash_height;
 			break;
@@ -4104,13 +4168,13 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					if( K!=$.ps.dir)
 					{
 						if( $.dirh()==($.ps.vx>0?1:-1))
-						{//turn back
+						{	//turn back
 							if( $.frame.N===213) $.trans.frame(214, 0);
 							if( $.frame.N===216) $.trans.frame(217, 0);
 							$.switch_dir_fun(K);
 						}
 						else
-						{//turn to front
+						{	//turn to front
 							if( $.frame.N===214) $.trans.frame(213, 0);
 							if( $.frame.N===217) $.trans.frame(216, 0);
 							$.switch_dir_fun(K);
@@ -4538,15 +4602,23 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						var dx=0;
 						if($.con.state.left)  dx-=1;
 						if($.con.state.right) dx+=1;
-						if( dx || $.ps.vx!==0)
+						if( dx)
 						{
 							$.trans.frame(213, 10);
 							$.switch_dir_fun(dx===1?'right':'left');
 						}
-						else
+						else if( $.ps.vx===0)
 						{
 							$.trans.inc_wait(2, 10, 99); //lock until frame transition
 							$.trans.set_next(210, 10);
+						}
+						else if( ($.ps.vx>0?1:-1)===$.dirh())
+						{
+							$.trans.frame(213, 10);
+						}
+						else
+						{
+							$.trans.frame(214, 10);
 						}
 						return 1;
 					}
@@ -4692,6 +4764,11 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		$.states_switch_dir = states_switch_dir;
 		$.mech.floor_xbound = true;
 		$.con = config.controller;
+		$.combo_buffer=
+		{
+			combo:null,
+			timeout:0
+		};
 		if( $.con)
 		{
 			function combo_event(kobj)
@@ -4703,7 +4780,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						if( $.switch_dir)
 							$.switch_dir_fun(K);
 				}
-				$.combo_buffer = K;
+				$.combo_buffer.combo = K;
+				$.combo_buffer.timeout = 5;
 			}
 			var dec_con = //combo detector
 			{
@@ -4764,7 +4842,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			a combo event is emitted even when there is no combo, in such case `K=null`
 		 */
 		var $=this;
-		var K = $.combo_buffer;
+		var K = $.combo_buffer.combo;
 		if(!K) K=null;
 
 		var tar1=$.states[$.frame.D.state];
@@ -4776,7 +4854,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		if( tar2) tar2.call($,'post_combo');
 		if( res1 || res2 ||
 			K==='left' || K==='right' || K==='up' || K==='down') //dir combos are not persistent
-			$.combo_buffer = null;
+			$.combo_buffer.combo = null;
 	}
 
 	/** @protocol caller hits callee
@@ -6544,6 +6622,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			x:0,y:0, //offset x,y
 			img:data.shadow
 		};
+		$.dropframe = 1;
 		(function(){
 			var sp = new Fsprite({img:data.shadow});
 			sp.img[0].addEventListener('load', onload, true);
@@ -6687,8 +6766,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		var $=this;
 		if( $.camera_locked)
 			return;
-		var reduce=2;
-		if( $.cami++%reduce !==0)
+		if( $.cami++%$.dropframe!==0)
 			return;
 		/** algorithm by Azriel
 			http://www.lf-empire.de/forum/archive/index.php/thread-4597.html
@@ -6709,7 +6787,7 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		var xLimit= (facing*screenW/24)+(avgX-halfW);
 		if( xLimit < 0) xLimit=0;
 		if( xLimit > $.width-screenW) xLimit = $.width-screenW;
-		var spdX = (xLimit - $.camerax) * GA.camera.speed_factor * reduce;
+		var spdX = (xLimit - $.camerax) * GA.camera.speed_factor * $.dropframe;
 		if( spdX!==0)
 		{
 			if( -0.2<spdX && spdX<0.2)
@@ -7189,6 +7267,11 @@ Global)
 	match.prototype.create_controller=function(allow)
 	{
 		var $=this;
+		function show_pause()
+		{
+			if( $.time.paused)
+				$.pause_mess.show();
+		}
 		if( allow==='debug')
 		{
 			var funkey_config =
@@ -7221,7 +7304,10 @@ Global)
 							break;
 						}
 						if( $.time.paused)
-							$.pause_mess.show();
+						{
+							$.pause_mess.hide();
+							setTimeout(show_pause,2);
+						}
 						else
 							$.pause_mess.hide();
 					}
@@ -7394,8 +7480,7 @@ util,buildinfo){
 			if( typeof ratio!=='number')
 			{
 				ratio = window.innerHeight/parseInt(window.getComputedStyle(util.container,null).getPropertyValue('height'));
-				ratio = Math.floor(ratio*10)/10;
-				console.log(ratio);
+				ratio = Math.floor(ratio*100)/100;
 			}
 			util.container.style[Fsupport.css2dtransform+'Origin']= '0 0';
 			util.container.style[Fsupport.css2dtransform]= 'scale('+ratio+','+ratio+') ';
