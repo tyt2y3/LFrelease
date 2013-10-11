@@ -238,6 +238,8 @@ controller.keyname_to_keycode=
 controller.prototype.keyname_to_keycode=
 function(A)
 {
+	if( typeof A==='number')
+		return A;
 	var code;
 	if( A.length==1)
 	{
@@ -457,6 +459,22 @@ define('F.core/support',[],function()
 	 | if( support.css3dtransform)
 	 | 	this.el.style[support.css3dtransform]= 'translate3d('+P.x+'px,'+P.y+'px, 0px) ';
 	\*/
+	/*\
+	 * support.localStorage
+	 - (object) similar functionality as `window.localStorage`
+	 * if `window.localStorage` is not supported, will create a shim that emulates `window.localStorage` using cookie. the methods `clear`, `getItem`, `key`, `removeItem`, `setItem` and property `length` are available, but the dot or array notation does not work. for example, the following does **not** work
+	 | window.localStorage.someProperty = 2;
+	 | window.localStorage['someProperty'] = 2;
+	 * instead, use the following:
+	 | support.localStorage.setItem('someProperty', 2);
+	 * Ideally, all HTML5 browsers should support localStorage. The only problem is localStorage does not work in IE10 in protected mode for offline files.
+	 [ property ]
+	\*/
+	/*\
+	 * support.sessionStorage
+	 - (object) similar functionality as `window.sessionStorage`
+	 [ property ]
+	\*/
 
 	//test for browser and device
 	(function(){		
@@ -554,6 +572,127 @@ define('F.core/support',[],function()
 			};
 	}());
 	//--] end
+
+	// Storage polyfill by Remy Sharp
+	// [--
+	// https://github.com/inexorabletash/polyfill/blob/master/storage.js
+	// https://gist.github.com/350433
+	// Tweaks by Joshua Bell (inexorabletash@gmail.com)
+	if (!window.localStorage || !window.sessionStorage) (function() {
+
+		var Storage = function(type) {
+			function createCookie(name, value, days) {
+				var date, expires;
+
+				if (days) {
+					date = new Date();
+					date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+					expires = "; expires=" + date.toGMTString();
+				} else {
+					expires = "";
+				}
+				document.cookie = name + "=" + value + expires + "; path=/";
+			}
+
+			function readCookie(name) {
+				var nameEQ = name + "=",
+					ca = document.cookie.split(';'),
+					i, c;
+
+				for (i = 0; i < ca.length; i++) {
+					c = ca[i];
+					while (c.charAt(0) == ' ') {
+						c = c.substring(1, c.length);
+					}
+
+					if (c.indexOf(nameEQ) == 0) {
+						return c.substring(nameEQ.length, c.length);
+					}
+				}
+				return null;
+			}
+
+			function setData(data) {
+				data = JSON.stringify(data);
+				if (type == 'session') {
+					window.name = data;
+				} else {
+					createCookie('localStorage', data, 365);
+				}
+			}
+
+			function clearData() {
+				if (type == 'session') {
+					window.name = '';
+				} else {
+					createCookie('localStorage', '', 365);
+				}
+			}
+
+			function getData() {
+				var data = type == 'session' ? window.name : readCookie('localStorage');
+				return data ? JSON.parse(data) : {};
+			}
+
+
+			// initialise if there's already data
+			var data = getData();
+
+			function numKeys() {
+				var n = 0;
+				for (var k in data) {
+					if (data.hasOwnProperty(k)) {
+						n += 1;
+					}
+				}
+				return n;
+			}
+
+			return {
+				clear: function() {
+					data = {};
+					clearData();
+					this.length = numKeys();
+				},
+				getItem: function(key) {
+					key = encodeURIComponent(key);
+					return data[key] === undefined ? null : data[key];
+				},
+				key: function(i) {
+					// not perfect, but works
+					var ctr = 0;
+					for (var k in data) {
+						if (ctr == i) return decodeURIComponent(k);
+						else ctr++;
+					}
+					return null;
+				},
+				removeItem: function(key) {
+					key = encodeURIComponent(key);
+					delete data[key];
+					setData(data);
+					this.length = numKeys();
+				},
+				setItem: function(key, value) {
+					key = encodeURIComponent(key);
+					data[key] = String(value);
+					setData(data);
+					this.length = numKeys();
+				},
+				length: 0
+			};
+		};
+
+		if (!window.localStorage) support.localStorage = window.localStorage = new Storage('local');
+		if (!window.sessionStorage) support.sessionStorage = window.sessionStorage = new Storage('session');
+
+	}());
+	else
+	{
+		support.localStorage = window.localStorage;
+		support.sessionStorage = window.sessionStorage;
+	}
+	//--]
 
 	return support;
 });
@@ -7541,10 +7680,8 @@ util,buildinfo){
 		(buildinfo.timestamp==='unbuilt'?'unbuilt demo':'built on: '+buildinfo.timestamp);
 
 	//
-	// F.LF stuff
+	// save settings
 	//
-	util.setup_resourcemap(package,Fsprite);
-
 	var control_con1 =
 	{
 		up:'u',down:'m',left:'h',right:'k',def:',',jump:'i',att:'j'
@@ -7553,6 +7690,32 @@ util,buildinfo){
 	{
 		up:'w',down:'x',left:'a',right:'d',def:'z',jump:'q',att:'s'
 	};
+	if( Fsupport.localStorage)
+	{
+		window.addEventListener('beforeunload',function(){
+			var obj =
+			{
+				controller:
+				[
+					control1.config, control2.config
+				]
+			}
+			Fsupport.localStorage.setItem('F.LF/settings',JSON.stringify(obj));
+		},false);
+
+		if( Fsupport.localStorage.getItem('F.LF/settings'))
+		{
+			var obj = JSON.parse(Fsupport.localStorage.getItem('F.LF/settings'));
+			control_con1 = obj.controller[0];
+			control_con2 = obj.controller[1];
+		}
+	}
+
+	//
+	// F.LF stuff
+	//
+	util.setup_resourcemap(package,Fsprite);
+
 	var control1 = new Fcontroller(control_con1);
 	var control2 = new Fcontroller(control_con2);
 	control1.sync=true;
