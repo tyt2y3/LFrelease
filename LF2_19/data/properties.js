@@ -7,13 +7,13 @@ define(function()
 
 var ID={};
 
-/** 1: Deep*/
+// 1: Deep
 ID[1]=
 {
 	//hp:500,mp:500 //optional
 };
 
-/** 30: Bandit*/
+// 30: Bandit
 ID[30]=
 {
 	dash_backattack: false, //can attack while dashing and turned back
@@ -21,7 +21,7 @@ ID[30]=
 	heavy_weapon_jump: false //extended standard; can jump while holding a heavy weapon
 };
 
-/**	Light Weapons		id from 100~149*/
+// lightweapon		id from 100~149
 
 ID[100]= //stick (baseball bat)
 {
@@ -44,14 +44,21 @@ ID[101]= //hoe
 	jump_throw: true
 };
 
-/**  heavyweapon				id from 150~199*/
+// heavyweapon		id from 150~199
 
 ID[150]= //stone
 {
 	mass: 0.9
 };
 
-/**	Effects				id from 300~349 (extended standard)*/
+// specialattack	id from 200~299
+
+ID[203]=
+{
+	mass: 0
+};
+
+// effects			id from 300~349 (extended standard)
 
 ID[300]= //hit
 {

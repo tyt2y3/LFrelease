@@ -1660,13 +1660,154 @@ define('LF/packages',{
 });
 
 /*\
+ * util.js
+ * utilities for F.LF
+\*/
+
+define('LF/util',[],function(){
+
+if (typeof console==='undefined')
+{	//polyfill for IE, this is just for precaution
+	// we should not use console.log in production anyway unless for fatal error
+    console={};
+    console.log = function(){}
+}
+
+var util={};
+
+util.select_from=function(from,where,option)
+{
+	var res=[];
+	for( var i in from)
+	{
+		var O=from[i];
+		var match=true;
+		if( typeof where==='function')
+		{
+			if( !where(O))
+				match=false;
+		}
+		else
+			for( var j in where)
+			{
+				if( O[j]!==where[j])
+					match=false;
+			}
+		if( match)
+			res.push(O);
+	}
+	if( res.length===0)
+		return ;
+	else if( res.length===1)
+		return res[0];
+	else
+		return res;
+}
+
+util.lookup=function(A,x)
+{
+	for( var i in A)
+	{
+		if( x<=i)
+			return A[i];
+	}
+}
+
+util.lookup_abs=function(A,x)
+{
+	if( x<0) x=-x;
+	for( var i in A)
+	{
+		if( x<=i)
+			return A[i];
+	}
+}
+
+util.shallow_copy=function(A)
+{
+	var B={};
+	for( var i in A)
+		B[i] = A[i];
+	return B;
+}
+
+util.div=function(classname)
+{
+	if( !util.container)
+	{
+		util.container = document.getElementsByClassName('LFcontainer')[0];
+		if( !util.container) return null;
+	}
+	return util.container.getElementsByClassName('LF'+classname)[0];
+}
+
+util.filename=function(file)
+{
+	if( file.lastIndexOf('/')!==-1)
+		file = file.slice(file.lastIndexOf('/')+1);
+	if( file.lastIndexOf('.js')!==-1)
+		file = file.slice(0,file.lastIndexOf('.js'));
+	return file;
+}
+
+/**
+The resourcemap specified by F.core allows putting a js function as a condition checker.
+This is considered insecure in F.LF. thus F.LF only allows simple predefined condition checking.
+*/
+util.setup_resourcemap=function(package,Fsprite)
+{
+	var has_resmap=false;
+	if( package.resourcemap)
+	if( typeof package.resourcemap.condition==='string')
+	{
+		var cond = package.resourcemap.condition.split(' ');
+		if( cond[0]==='location' && cond[1]==='contain' &&
+			cond[2] && cond[3]==='at' && cond[4])
+		{
+			cond[4]=parseInt(cond[4]);
+			package.resourcemap.condition = function()
+			{
+				return window.location.href.indexOf(cond[2])===cond[4];
+			}
+		}
+		else if( cond[0]==='location' && cond[1]==='contain' && cond[2])
+		{
+			package.resourcemap.condition = function()
+			{
+				return window.location.href.indexOf(cond[2])!==-1;
+			}
+		}
+
+		if( typeof package.resourcemap.condition==='function')
+		{
+			var resmap = [
+				package.resourcemap, //package-defined resourcemap
+				{	//default resourcemap
+					get: function(res)
+					{
+						return package.location+res;
+					}
+				}
+			];
+			Fsprite.masterconfig_set('resourcemap',resmap);
+			has_resmap=true;
+		}
+	}
+	if( !has_resmap)
+		Fsprite.masterconfig_set('baseUrl',package.location);
+}
+
+return util;
+});
+
+/*\
  * global.js
  * 
  * global constants of a game
  * 
  * note to data changers: tweak entries in this file very carefully. do not add or delete entries.
 \*/
-define('LF/global',[],function()
+define('LF/global',['LF/util'],function(util)
 {
 
 var G={};
@@ -1722,12 +1863,31 @@ G.combo_tag =
 	'DJA':'hit_ja'
 };
 
-G.lazyload = function(O)
+G.lazyload = function(O) //return true to delay loading of data files
 {
-	//return true to delay loading of data files of specific type
+	if( !this.character_list)
+		this.character_list={};
 	if( O.type==='character')
-		return true;
-}
+	{
+		var file = util.filename(O.file);
+		this.character_list[file] = true;
+		return true; //delay loading of all character files
+	}
+	else
+	{
+		var file = util.filename(O.file);
+		if( file.lastIndexOf('_')!==-1)
+			file = file.slice(0,file.lastIndexOf('_'));
+		/** delay loading of all character prefixed files. consider,
+			{id: 1, type:'character', file:'data/deep.js'},
+			{id:203, type:'specialattack', file:'data/deep_ball.js'}
+			as `deep.js` is of type character, any files matching `deep_*` will also be lazy loaded
+		*/
+		if( this.character_list[file])
+			return true;
+	}
+	return false;
+};
 
 G.gameplay={};
 var GC = G.gameplay;
@@ -2513,7 +2673,7 @@ var GC=Global.gameplay;
 function mech(parent)
 {
 	var spec=parent.spec;
-	if( spec[parent.id] && spec[parent.id].mass)
+	if( spec[parent.id] && spec[parent.id].mass!==undefined && spec[parent.id].mass!==null)
 		this.mass=spec[parent.id].mass;
 	else
 		this.mass=Global.gameplay.default.machanics.mass;
@@ -2522,7 +2682,7 @@ function mech(parent)
 	this.sp=parent.sp;
 	this.frame=parent.frame;
 	this.parent=parent;
-	this.vol_body={0:{},1:{},2:{},3:{},4:{},5:{},length:0,empty_data:{}};
+	this.vol_body={0:{},1:{},2:{},3:{},4:{},5:{},length:0,empty_data:{},max:6};
 	this.bg=parent.bg;
 	this.sha=parent.shadow;
 }
@@ -2535,7 +2695,11 @@ mech.prototype.body= function(obj,filter,offset)
 	var off=offset;
 	if(!obj)
 		obj=this.frame.D.bdy;
-	if( obj===this.frame.D.bdy && !filter)
+	//if parent object is in `super` effect, returns no body volume
+	if( obj===this.frame.D.bdy && this.parent.effect.super)
+		return this.body_empty();
+	//if meets certain criteria (as in most cases), will use optimized version
+	if( obj===this.frame.D.bdy && !filter && (!(obj instanceof Array) || obj.length<=this.vol_body.max))
 		return this.body_body(offset);
 
 	if( obj instanceof Array)
@@ -2571,6 +2735,13 @@ mech.prototype.body= function(obj,filter,offset)
 		else
 			return [];
 	}
+}
+
+//returns a pseudo array with zero element
+mech.prototype.body_empty= function()
+{
+	this.vol_body.length = 0;
+	return this.vol_body;
 }
 
 //a slightly optimized version, creating less new objects
@@ -2712,17 +2883,24 @@ mech.prototype.volume= function(O,V)
 		}
 }
 
-mech.prototype.make_point= function(a)
+mech.prototype.make_point= function(a,prefix)
 {
 	var ps=this.ps;
 	var sp=this.sp;
 
-	if( a)
+	if( a && !prefix)
 	{
 		if( ps.dir==='right')
 			return {x:ps.sx+a.x, y:ps.sy+a.y, z:ps.sz+a.y};
 		else
 			return {x:ps.sx+sp.w-a.x, y:ps.sy+a.y, z:ps.sz+a.y};
+	}
+	else if( a && prefix)
+	{
+		if( ps.dir==='right')
+			return {x:ps.sx+a[prefix+'x'], y:ps.sy+a[prefix+'y'], z:ps.sz+a[prefix+'y']};
+		else
+			return {x:ps.sx+sp.w-a[prefix+'x'], y:ps.sy+a[prefix+'y'], z:ps.sz+a[prefix+'y']};
 	}
 	else
 	{
@@ -2913,125 +3091,6 @@ return mech;
 });
 
 /*\
- * util.js
- * utilities for F.LF
-\*/
-
-define('LF/util',[],function(){
-
-if (typeof console==='undefined')
-{	//polyfill for IE, this is just for precaution
-	// we should not use console.log in production anyway unless for fatal error
-    console={};
-    console.log = function(){}
-}
-
-var util={};
-
-util.select_from=function(from,where,option)
-{
-	for( var i in from)
-	{
-		var O=from[i];
-		var match=true;
-		for( var j in where)
-		{
-			if( O[j]!==where[j])
-				match=false;
-		}
-		if( match)
-			return O;
-	}
-}
-
-util.lookup=function(A,x)
-{
-	for( var i in A)
-	{
-		if( x<=i)
-			return A[i];
-	}
-}
-
-util.lookup_abs=function(A,x)
-{
-	if( x<0) x=-x;
-	for( var i in A)
-	{
-		if( x<=i)
-			return A[i];
-	}
-}
-
-util.shallow_copy=function(A)
-{
-	var B={};
-	for( var i in A)
-		B[i] = A[i];
-	return B;
-}
-
-util.div=function(classname)
-{
-	if( !util.container)
-	{
-		util.container = document.getElementsByClassName('LFcontainer')[0];
-		if( !util.container) return null;
-	}
-	return util.container.getElementsByClassName('LF'+classname)[0];
-}
-
-/**
-The resourcemap specified by F.core allows putting a js function as a condition checker.
-This is considered insecure in F.LF. thus F.LF only allows simple predefined condition checking.
-*/
-util.setup_resourcemap=function(package,Fsprite)
-{
-	var has_resmap=false;
-	if( package.resourcemap)
-	if( typeof package.resourcemap.condition==='string')
-	{
-		var cond = package.resourcemap.condition.split(' ');
-		if( cond[0]==='location' && cond[1]==='contain' &&
-			cond[2] && cond[3]==='at' && cond[4])
-		{
-			cond[4]=parseInt(cond[4]);
-			package.resourcemap.condition = function()
-			{
-				return window.location.href.indexOf(cond[2])===cond[4];
-			}
-		}
-		else if( cond[0]==='location' && cond[1]==='contain' && cond[2])
-		{
-			package.resourcemap.condition = function()
-			{
-				return window.location.href.indexOf(cond[2])!==-1;
-			}
-		}
-
-		if( typeof package.resourcemap.condition==='function')
-		{
-			var resmap = [
-				package.resourcemap, //package-defined resourcemap
-				{	//default resourcemap
-					get: function(res)
-					{
-						return package.location+res;
-					}
-				}
-			];
-			Fsprite.masterconfig_set('resourcemap',resmap);
-			has_resmap=true;
-		}
-	}
-	if( !has_resmap)
-		Fsprite.masterconfig_set('baseUrl',package.location);
-}
-
-return util;
-});
-
-/*\
  * livingobject
  * 
  * a base class for all living objects
@@ -3059,15 +3118,12 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		var $=this;
 
 		//identity
-		$.type='livingobject';
 		$.name=data.bmp.name;
 		$.uid=-1; //unique id, set by scene
 		$.id=thisID; //character id, specify tactical behavior. accept values from 0~99
 		$.data=data;
 		$.team=config.team;
-		$.states = null; //the collection of states forming a state machine
 		$.statemem = {}; //state memory, will be cleared on every state transition
-		$.states_switch_dir = null; //whether to allow switch dir in each state
 
 		//handles
 		$.match=config.match;
@@ -3112,11 +3168,12 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		};
 		$.effect=
 		{
-			num: -99,
-			i: 0,
+			num: -99, //effect number
 			dvx: 0, dvy: 0,
-			oscillate: 0,
 			stuck: false, //when an object is said to be 'stuck', there is not state and frame update
+			oscillate: 0, //if oscillate is non-zero, will oscillate for amplitude equals value of oscillate
+			blink: false, //blink: hide 2 TU, show 2 TU ,,, until effect vanishs
+			super: false, //when an object is in state 'super', it does not return body volume, such that it cannot be hit
 			timein: 0, //time to take effect
 			timeout: 0 //time to lose effect
 		};
@@ -3127,12 +3184,16 @@ function ( Global, Sprite, Mech, util, Fsprite)
 			obj: null, //something that I can hold or can hold me
 			id: 0 //id of holding
 		};
-		$.switch_dir=true; //direction switcher
+		$.allow_switch_dir=true; //direction switcher
 	}
+	livingobject.prototype.type='livingobject';
+	//livingobject.prototype.states = null; //the collection of states forming a state machine
+	//livingobject.prototype.states_switch_dir = null; //whether to allow switch dir in each state
 
 	livingobject.prototype.destroy = function()
 	{
 		this.sp.destroy();
+		this.shadow.remove();
 	}
 
 	livingobject.prototype.log = function(mes)
@@ -3186,18 +3247,49 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		{
 			if( $.effect.oscillate)
 			{
-				if( $.effect.i===1)
-					$.effect.i=-1;
+				if( $.effect.oi===1)
+					$.effect.oi=-1;
 				else
-					$.effect.i=1;
-				$.sp.set_x_y($.ps.sx + $.effect.oscillate*$.effect.i, $.ps.sy+$.ps.sz);
+					$.effect.oi=1;
+				$.sp.set_x_y($.ps.sx + $.effect.oscillate*$.effect.oi, $.ps.sy+$.ps.sz);
+			}
+			else if( $.effect.blink)
+			{
+				if( $.effect.bi===undefined)
+					$.effect.bi = 0;
+				switch ($.effect.bi%4)
+				{
+					case 0: case 1:
+						$.sp.hide();
+					break;
+					case 2: case 3:
+						$.sp.show();
+					break;
+				}
+				$.effect.bi++;
 			}
 			if( $.effect.timeout===0)
 			{
 				$.effect.num = -99;
-				$.effect.oscillate = 0;
-				$.effect.stuck = false;
-				$.sp.set_x_y($.ps.sx, $.ps.sy+$.ps.sz);
+				if( $.effect.stuck)
+				{
+					$.effect.stuck = false;
+				}
+				if( $.effect.oscillate)
+				{
+					$.effect.oscillate = 0;
+					$.sp.set_x_y($.ps.sx, $.ps.sy+$.ps.sz);
+				}
+				if( $.effect.blink)
+				{
+					$.effect.blink = false;
+					$.effect.bi = undefined;
+					$.sp.show();
+				}
+				if( $.effect.super)
+				{
+					$.effect.super = false;
+				}
 			}
 			else if( $.effect.timeout===-1)
 			{
@@ -3276,7 +3368,7 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	//  all other volumes e.g. itr should start with prefix vol_
 	livingobject.prototype.vol_body=function() 
 	{
-		return this.mech.body_body();
+		return this.mech.body();
 	}
 
 	livingobject.prototype.cur_state=function()
@@ -3398,7 +3490,7 @@ function ( Global, Sprite, Mech, util, Fsprite)
 			return true;
 	}
 
-	livingobject.prototype.switch_dir_fun = function(e)
+	livingobject.prototype.switch_dir = function(e)
 	{
 		var $=this;
 		if( $.ps.dir==='left' && e==='right')
@@ -3563,6 +3655,12 @@ function ( Global, Sprite, Mech, util, Fsprite)
 				}
 				else
 				{
+					if( next===1000)
+					{
+						$.match.destroy_object($);
+						return;
+					}
+
 					if( next===999)
 						next=0;
 					$.frame.PN=$.frame.N;
@@ -3579,20 +3677,20 @@ function ( Global, Sprite, Mech, util, Fsprite)
 					if( is_trans)
 					{
 						$.statemem = {};
-						var old_switch_dir=$.switch_dir;
+						var old_switch_dir=$.allow_switch_dir;
 						if( $.states_switch_dir && $.states_switch_dir[$.frame.D.state] !== undefined)
-							$.switch_dir=$.states_switch_dir[$.frame.D.state];
+							$.allow_switch_dir=$.states_switch_dir[$.frame.D.state];
 						else
-							$.switch_dir=false;
+							$.allow_switch_dir=false;
 
 						$.state_update('state_entry');
 
-						if( $.switch_dir && !old_switch_dir)
+						if( $.allow_switch_dir && !old_switch_dir)
 						{
 							if( $.con)
 							{
-								if($.con.state.left) $.switch_dir_fun('left');
-								if($.con.state.right) $.switch_dir_fun('right');
+								if($.con.state.left) $.switch_dir('left');
+								if($.con.state.right) $.switch_dir('right');
 							}
 						}
 					}
@@ -3817,6 +3915,9 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		'generic':function(event,K)
 		{	var $=this;
 			switch (event) {
+			case 'frame':
+				$.opoint();
+			break;
 			case 'TU':
 				if( $.state_update('post_interaction'))
 					; //do nothing
@@ -3906,7 +4007,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			case 'transit':
 				//dynamics: position, friction, gravity
 				$.mech.dynamics(); //any further change in position will not be updated on screen until next TU
-				$.wpoint.call($); //my holding weapon following my change
+				$.wpoint(); //my holding weapon following my change
 			break;
 			case 'combo':
 				switch(K)
@@ -4075,14 +4176,15 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 			case 'TU':
 				//apply movement
+				var xfactor = 1-($.dirv()?1:0)*(1/7); //reduce x speed if moving diagonally
 				if( $.hold.obj && $.hold.obj.type==='heavyweapon')
 				{
-					if( dx) $.ps.vx=$.dirh()*($.data.bmp.heavy_walking_speed);
+					if( dx) $.ps.vx=xfactor*$.dirh()*($.data.bmp.heavy_walking_speed);
 					$.ps.vz=$.dirv()*($.data.bmp.heavy_walking_speedz);
 				}
 				else
 				{
-					if( dx) $.ps.vx=$.dirh()*($.data.bmp.walking_speed);
+					if( dx) $.ps.vx=xfactor*$.dirh()*($.data.bmp.walking_speed);
 					$.ps.vz=$.dirv()*($.data.bmp.walking_speedz);
 					if( !dx && !dz && !$.statemem.transed)
 					{
@@ -4099,7 +4201,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 			case 'combo':
 				if( dx!==0 && dx!==$.dirh())
-					$.switch_dir_fun($.ps.dir==='right'?'left':'right'); //toogle dir
+					$.switch_dir($.ps.dir==='right'?'left':'right'); //toogle dir
 				if( !dx && !dz && !$.statemem.released)
 				{
 					$.statemem.released=true;
@@ -4124,14 +4226,15 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 			case 'TU':
 				//to maintain the velocity against friction
+				var xfactor = 1-($.dirv()?1:0)*(1/7); //reduce x speed if moving diagonally
 				if( $.hold.obj && $.hold.obj.type==='heavyweapon')
 				{
-					$.ps.vx= $.dirh() * $.data.bmp.heavy_running_speed;
+					$.ps.vx= xfactor * $.dirh() * $.data.bmp.heavy_running_speed;
 					$.ps.vz= $.dirv() * $.data.bmp.heavy_running_speedz;
 				}
 				else
 				{
-					$.ps.vx= $.dirh() * $.data.bmp.running_speed;
+					$.ps.vx= xfactor * $.dirh() * $.data.bmp.running_speed;
 					$.ps.vz= $.dirv() * $.data.bmp.running_speedz;
 				}
 			break;
@@ -4294,7 +4397,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 							$.trans.frame(40, 10);
 						else
 							$.trans.frame(90, 10);
-						$.switch_dir=false;
+						$.allow_switch_dir=false;
 						if( K==='att')
 							return 1;
 					}
@@ -4307,13 +4410,13 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						{	//turn back
 							if( $.frame.N===213) $.trans.frame(214, 0);
 							if( $.frame.N===216) $.trans.frame(217, 0);
-							$.switch_dir_fun(K);
+							$.switch_dir(K);
 						}
 						else
 						{	//turn to front
 							if( $.frame.N===214) $.trans.frame(213, 0);
 							if( $.frame.N===217) $.trans.frame(216, 0);
-							$.switch_dir_fun(K);
+							$.switch_dir(K);
 						}
 						return 1;
 					}
@@ -4434,8 +4537,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 					if( $.frame.D.cpoint.dircontrol===1)
 					{
-						if($.con.state.left) $.switch_dir_fun('left');
-						if($.con.state.right) $.switch_dir_fun('right');
+						if($.con.state.left) $.switch_dir('left');
+						if($.con.state.right) $.switch_dir('right');
 					}
 				}
 			}
@@ -4465,7 +4568,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 							var tac = $.frame.D.cpoint.taction;
 							if( tac<0)
 							{	//turn myself around
-								$.switch_dir_fun($.ps.dir==='right'?'left':'right'); //toogle dir
+								$.switch_dir($.ps.dir==='right'?'left':'right'); //toogle dir
 								$.trans.frame(-tac, 10);
 							}
 							else
@@ -4548,9 +4651,9 @@ function(livingobject, Global, Fcombodec, Futil, util)
 							if( cpoint.dircontrol===undefined)
 							{
 								if( cpoint.cover && cpoint.cover>=10)
-									$.switch_dir_fun(adir); //follow dir of catcher
+									$.switch_dir(adir); //follow dir of catcher
 								else //default cpoint cover
-									$.switch_dir_fun(adir==='left'?'right':'left'); //face the catcher
+									$.switch_dir(adir==='left'?'right':'left'); //face the catcher
 
 								$.mech.coincideXZ(holdpoint,$.mech.make_point($.frame.D.cpoint));
 							}
@@ -4693,6 +4796,12 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				$.health.fall=0;
 				$.health.bdefend=0;
 			break;
+			case 'state_exit':
+				$.effect.timein=0;
+				$.effect.timeout=30;
+				$.effect.blink=true;
+				$.effect.super=true;
+			break;
 		}},
 
 		'15':function(event,K) //stop_running, crouch, crouch2, dash_attack, light_weapon_thw, heavy_weapon_thw, heavy_stop_run
@@ -4741,7 +4850,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						if( dx)
 						{
 							$.trans.frame(213, 10);
-							$.switch_dir_fun(dx===1?'right':'left');
+							$.switch_dir(dx===1?'right':'left');
 						}
 						else if( $.ps.vx===0)
 						{
@@ -4855,9 +4964,9 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				if( tag==='hit_Fj')
 				{
 					if( K==='D>J' || K==='D>AJ')
-						$.switch_dir_fun('right');
+						$.switch_dir('right');
 					else
-						$.switch_dir_fun('left');
+						$.switch_dir('left');
 				}
 			break;
 			}
@@ -4891,13 +5000,10 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		var $=this;
 		// chain constructor
 		livingobject.call(this,config,data,thisID);
-		$.type = 'character';
-		$.states = states;
 		if( typeof idupdates[$.id]==='function')
 			$.id_update=idupdates[$.id];
 		else
 			$.id_update=idupdates['default'];
-		$.states_switch_dir = states_switch_dir;
 		$.mech.floor_xbound = true;
 		$.con = config.controller;
 		$.combo_buffer=
@@ -4913,8 +5019,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				switch (K)
 				{
 					case 'left': case 'right':
-						if( $.switch_dir)
-							$.switch_dir_fun(K);
+						if( $.allow_switch_dir)
+							$.switch_dir(K);
 				}
 				$.combo_buffer.combo = K;
 				$.combo_buffer.timeout = 10;
@@ -4966,6 +5072,9 @@ function(livingobject, Global, Fcombodec, Futil, util)
 	}
 	character.prototype = new livingobject();
 	character.prototype.constructor = character;
+	character.prototype.type = 'character';
+	character.prototype.states = states;
+	character.prototype.states_switch_dir = states_switch_dir;
 
 	//to emit a combo event
 	character.prototype.combo_update = function()
@@ -5217,9 +5326,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			case 0: //normal attack
 				for( var t in hit)
 				{
-					var team_allow=true;
-					if( hit[t].type==='character' && hit[t].team===$.team)
-						team_allow=false; //only attack characters of other teams
+					var team_allow = !(hit[t].type==='character' && hit[t].team===$.team);
+						//only attack characters of other teams
 
 					if( team_allow)
 					if( $.itr_rest_test( hit[t].uid, ITR))
@@ -5271,6 +5379,15 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				//stalls
 				$.trans.inc_wait(GC.default.itr.hit_stall, 10);
 			}
+		}
+	}
+
+	character.prototype.opoint=function()
+	{
+		var $=this;
+		if( $.frame.D.opoint)
+		{
+			$.match.create_object($.frame.D.opoint, $);
 		}
 	}
 
@@ -5475,8 +5592,6 @@ function weapon(type)
 		var $=this;
 		// chain constructor
 		livingobject.call(this,config,data,thisID);
-		$.type = type;
-		$.states = states;
 		for( var i=0; i<$.sp.ani.length; i++)
 		{	//fix border issue
 			$.sp.ani[i].config.borderleft=1;
@@ -5490,6 +5605,8 @@ function weapon(type)
 	typeweapon.prototype.constructor = typeweapon;
 	typeweapon.prototype.light = type==='lightweapon';
 	typeweapon.prototype.heavy = type==='heavyweapon';
+	typeweapon.prototype.type = type;
+	typeweapon.prototype.states = states;
 
 	typeweapon.prototype.interaction=function()
 	{
@@ -5512,7 +5629,7 @@ function weapon(type)
 						itr_rest=ITR[j];
 					else
 						itr_rest=GC.default.weapon;
-					if( itr_rest.arest) itr_rest.arest+=20;
+					//if( itr_rest.arest) itr_rest.arest+=20; //what is this line for?
 					//
 					/*console.log('I='+$.uid+', he='+hit[k].uid+
 						', arest='+itr_rest.arest+
@@ -5679,7 +5796,7 @@ function weapon(type)
 				else
 					$.ps.zz = 0;
 
-				$.switch_dir_fun(att.ps.dir);
+				$.switch_dir(att.ps.dir);
 				$.ps.sz = $.ps.z = att.ps.z;
 				$.mech.coincideXY(holdpoint,$.mech.make_point(fD.wpoint));
 				$.mech.project();
@@ -5789,6 +5906,154 @@ function weapon(type)
 
 } //outer class weapon
 return weapon;
+});
+
+/*\
+ * special attack
+\*/
+
+define('LF/specialattack',['LF/livingobject','LF/global','F.core/util'],
+function(livingobject, Global, Futil)
+{
+var GC=Global.gameplay;
+
+	/*\
+	 * specialattack
+	 [ class ]
+	\*/
+	var states=
+	{
+		'generic':function(event,K)
+		{	var $=this;
+			switch (event) {
+
+			case 'TU':
+				$.interaction();
+				$.mech.dynamics();
+				/*	<YinYin> hit_a is the amount of hp that will be taken from a type 3 object they start with 500hp like characters it can only be reset with F7 or negative hits - once the hp reaches 0 the type 3 object will go to frame noted in hit_d - also kind 9 itrs (john shield) deplete hp instantly.
+				*/
+				if( $.frame.D.hit_a)
+				{
+					$.health.hp -= $.frame.D.hit_a;
+					if( $.health.hp<=0)
+						$.trans.frame($.frame.D.hit_d);
+				}
+			break;
+
+			case 'frame':
+			break;
+		}},
+
+		// State 300X - Ball States
+		// descriptions taken from
+		// http://lf-empire.de/lf2-empire/data-changing/reference-pages/182-states?showall=&start=29
+
+		/*	State 3000 - Ball Flying
+			State 3000 is the standard state for attacks.  If the ball hits other attacks with this state, it'll go to the hitting frame (10).  If it is hit by another ball or a character, it'll go to the the hit frame (20) or rebounding frame (30).
+		*/
+		'3000':function(event,K)
+		{	var $=this;
+			switch (event) {
+			case 'hit_others':
+				$.trans.frame(10);
+			break;
+			case 'hit_by_others':
+				$.trans.frame(20);
+			break;
+		}},
+
+		/*	State 3001 - Ball Flying / Hitting
+			State 3001 is used in the hitting frames, but you can also use this state directly in the flying frames.  If the ball hits a character while it has state 3001, then it won't go to the hitting frame (20).  It's the same for states 3002 through 3004. 
+		*/
+		'3001':function(event,K)
+		{	var $=this;
+			switch (event) {
+		}},
+
+		'x':function(event,K)
+		{	var $=this;
+			switch (event) {
+		}}
+	};
+
+	//inherit livingobject
+	function specialattack(config,data,thisID)
+	{
+		var $=this;
+		// chain constructor
+		livingobject.call($,config,data,thisID);
+		// constructor
+		$.health.hp = $.proper('hp') || GC.default.health.hp_full;
+		$.setup();
+	}
+	specialattack.prototype = new livingobject();
+	specialattack.prototype.constructor = specialattack;
+	specialattack.prototype.states = states;
+	specialattack.prototype.type = 'specialattack';
+
+	specialattack.prototype.init = function(pos,z,parent_dir,opoint)
+	{
+		var $=this;
+		$.mech.set_pos(0,0,z);
+		$.mech.coincideXY(pos,$.mech.make_point($.frame.D,'center'));
+		var dir;
+		var face = opoint.facing;
+		if( face>=20)
+			face = face%10;
+		if( face===0)
+			dir=parent_dir;
+		else if( face===1)
+			dir=(parent_dir==='right'?'left':'right');
+		else if( 2<=face && face<=10)
+			dir='right';
+		else if(11<=face && face<=19) //adapted standard
+			dir='left';
+		$.switch_dir(dir);
+
+		$.frame.PN = 0;
+		$.frame.N = opoint.action;
+		$.frame.D = $.data.frame[$.frame.N];
+		$.sp.show_pic($.frame.D.pic);
+
+		$.ps.vx = $.dirh() * opoint.dvx;
+		$.ps.vy = opoint.dvy;
+	}
+
+	specialattack.prototype.interaction=function()
+	{
+		var $=this;
+		var ITR=Futil.make_array($.frame.D.itr);
+
+		if( $.team!==0)
+		for( var j in ITR)
+		{	//for each itr tag
+			if( ITR[j].kind===0) //kind 0
+			{
+				var vol=$.mech.volume(ITR[j]);
+				var hit= $.scene.query(vol, $, {tag:'body', not_team:$.team});
+				for( var k in hit)
+				{	//for each being hit
+					if( $.itr_rest_test( hit[k].uid, ITR[j]))
+					if( hit[k].hit(ITR[j],$,{x:$.ps.x,y:$.ps.y,z:$.ps.z},vol))
+					{	//hit you!
+						$.itr_rest_update( hit[k].uid, ITR[j]);
+						$.state_update('hit_others');
+						$.ps.vx = 0;
+						if( ITR[j].arest) break; //attack one enemy only
+					}
+				}
+			}
+		}
+	}
+
+	specialattack.prototype.hit=function(ITR, att, attps, rect)
+	{
+		var $=this;
+		var accept=false;
+		return accept;
+	}
+
+	return specialattack;
 });
 
 /*\
@@ -6178,8 +6443,8 @@ return effect_set;
  * this abstraction is to allow addition of new object types.
 \*/
 
-define('LF/factories',['LF/character','LF/weapon','LF/effects'],
-function(character,weapon,effects)
+define('LF/factories',['LF/character','LF/weapon','LF/specialattack','LF/effects'],
+function(character,weapon,specialattack,effects)
 {
 	/** to manufacture an object a factory receives a config, `id` and `data`
 	*/
@@ -6187,7 +6452,7 @@ function(character,weapon,effects)
 		character: character,
 		lightweapon: weapon('lightweapon'),
 		heavyweapon: weapon('heavyweapon'),
-		//specialattack: specialattack,
+		specialattack: specialattack,
 		//baseball: baseball,
 		//miscell: miscell,
 		//drinks: drinks,
@@ -6612,15 +6877,18 @@ function scene (config)
 
 scene.prototype.add = function(C)
 {
-	C.uid = this.uid++;
+	this.uid++;
+	C.uid = this.uid;
 	this.live[C.uid]=C;
 	return C.uid;
 }
 
 scene.prototype.remove = function(C)
 {
+	var uid = C.uid;
 	delete this.live[C.uid];
 	C.uid=-1;
+	return uid;
 }
 
 /*\
@@ -6796,7 +7064,6 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			sc.onmousedown=function()
 			{
 				$.camera_locked=true;
-				$.scrolling=true;
 			}
 			sc.onmouseup=function()
 			{
@@ -6806,7 +7073,6 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			{	//IE 9,10 quirk
 				sc.onmousemove=function()
 				{
-					$.scrolling=false;
 					$.camera_locked=false;
 				}
 			}
@@ -6818,6 +7084,8 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			$.camerax = $.width/2;
 			$.cami = 0;
 		}
+		else
+			$.camera_locked = true;
 
 		$.layers=[];
 		$.layers.push({
@@ -6907,9 +7175,8 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			return;
 		if( $.cami++%($.dropframe+1)!==0)
 			return;
-		/** algorithm by Azriel
-			http://www.lf-empire.de/forum/archive/index.php/thread-4597.html
-		 */
+		/// algorithm by Azriel
+		/// http://www.lf-empire.de/forum/archive/index.php/thread-4597.html
 		var avgX=0,
 			facing=0,
 			numPlayers=0;
@@ -7122,17 +7389,32 @@ Global)
 			},
 			background: {id:1}
 		} */
+		var $=this;
 		var char_list=[];
 		for( var i=0; i<setting.player.length; i++)
-			char_list.push(setting.player[i].id);
+		{
+			var name = util.filename(util.select_from($.grouped_object.character,{id:setting.player[i].id}).file);
+			var objects = util.select_from($.data.object,function(O){
+					if( !O.file) return;
+					var file = util.filename(O.file);
+					if( file.lastIndexOf('_')!==-1)
+						file = file.slice(0,file.lastIndexOf('_'));
+					return file===name;
+				});
+
+			/** if `deep.js` is of type character, any files matching `deep_*` will also be lazy loaded
+				here we have to load all characters and associated data files
+			 */
+			char_list = char_list.concat(Futil.extract_array(Futil.make_array(objects),'id').id);
+		}
 		if( !setting.set) setting.set={};
-		var $=this;
 
 		$.randomseed = $.new_randomseed();
 		$.create_scenegraph();
 		$.create_effects($.config.effects);
 		$.control = $.create_controller(setting.control);
 		$.create_background(setting.background);
+		$.tasks = []; //pending tasks
 
 		this.data.object.load(char_list,function()
 		{
@@ -7161,9 +7443,26 @@ Global)
 		console.log(this.time.t+': '+mes);
 	}
 
+	match.prototype.create_object=function(opoint, parent)
+	{
+		var $=this;
+		$.tasks.push({
+			task: 'create_object',
+			opoint: opoint,
+			team: parent.team,
+			pos: parent.mech.make_point(opoint),
+			z: parent.ps.z,
+			dir: parent.ps.dir
+		});
+	}
+
 	match.prototype.destroy_object=function(obj)
 	{
-		
+		var $=this;
+		$.tasks.push({
+			task: 'destroy_object',
+			obj: obj
+		});
 	}
 
 	//all methods below are considered private
@@ -7172,9 +7471,8 @@ Global)
 	{
 		var $=this;
 		$.scene = new Scene();
-		$.character = {};
-		$.weapon = {};
-		$.effect = {};
+		for( var objecttype in factory)
+			$[objecttype] = {};
 	}
 
 	match.prototype.create_timer=function()
@@ -7209,7 +7507,7 @@ Global)
 				$.time.$fps.value='paused';
 		}
 		if( $.time.t===0)
-			$.emit_event('start');
+			$.match_event('start');
 		$.time.t++;
 	}
 
@@ -7217,29 +7515,71 @@ Global)
 	{
 		var $=this;
 		$.emit_event('transit');
-		$.for_all('transit');
+		$.process_tasks();
 		$.emit_event('TU');
-		$.for_all('TU');
 		$.background.TU();
 		if( $.panel)
 			$.show_hp();
+	}
+
+	match.prototype.match_event=function(E)
+	{
+		var $=this;
+		if( $.state && $.state.event) $.state.event.call(this, E);
 	}
 
 	match.prototype.emit_event=function(E)
 	{
 		var $=this;
 		if( $.state && $.state.event) $.state.event.call(this, E);
+		$.for_all(E);
 	}
 
 	match.prototype.for_all=function(oper)
 	{
 		var $=this;
-		for( var i in $.character)
-			$.character[i][oper]();
-		for( var i in $.weapon)
-			$.weapon[i][oper]();
-		for( var i in $.effect)
-			$.effect[i][oper]();
+		for( var objecttype in factory)
+			for( var i in $[objecttype])
+				$[objecttype][i][oper]();
+	}
+
+	match.prototype.process_tasks=function()
+	{
+		var $=this;
+		for( var i=0; i<$.tasks.length; i++)
+			$.process_task($.tasks[i]);
+		$.tasks.length=0;
+	}
+	match.prototype.process_task=function(T)
+	{
+		var $=this;
+		switch (T.task)
+		{
+		case 'create_object':
+			if( T.opoint.kind===1)
+			{
+				if( T.opoint.oid)
+				{
+					var OBJ = util.select_from($.data.object,{id:T.opoint.oid});
+					var config =
+					{
+						match: $,
+						team: T.team
+					};
+					var obj = new factory[OBJ.type](config, OBJ.data, T.opoint.oid);
+					obj.init(T.pos, T.z, T.dir, T.opoint);
+					var uid = $.scene.add(obj);
+					$[obj.type][uid] = obj;
+				}
+			}
+		break;
+		case 'destroy_object':
+			var obj = T.obj;
+			obj.destroy();
+			var uid = $.scene.remove(obj);
+			delete $[obj.type][uid];
+		break;
+		}
 	}
 
 	match.prototype.calculate_fps=function(mul)
@@ -7285,6 +7625,7 @@ Global)
 					wh: 'fit'
 				});
 				spic.set_x_y($.data.UI.panel.x,$.data.UI.panel.y);
+				$.panel[i].uid = uid;
 				$.panel[i].hp_bound = new Fsprite({canvas: $.panel[i].el});
 				$.panel[i].hp_bound.set_x_y( $.data.UI.panel.hpx, $.data.UI.panel.hpy);
 				$.panel[i].hp_bound.set_w_h( $.data.UI.panel.hpw, $.data.UI.panel.hph);
@@ -7308,12 +7649,19 @@ Global)
 	match.prototype.show_hp=function()
 	{
 		var $=this;
-		for( var i in $.character)
+		for( var i=0; i<$.panel.length; i++)
 		{
-			var ch = $.character[i];
-			$.panel[i].hp.set_w(Math.floor(ch.health.hp/ch.health.hp_full*$.data.UI.panel.hpw));
-			$.panel[i].hp_bound.set_w(Math.floor(ch.health.hp_bound/ch.health.hp_full*$.data.UI.panel.hpw));
-			$.panel[i].mp.set_w(Math.floor(ch.health.mp/ch.health.mp_full*$.data.UI.panel.mpw));
+			if( $.panel[i].uid!==undefined)
+			{
+				var ch = $.character[$.panel[i].uid],
+					hp = Math.floor(ch.health.hp/ch.health.hp_full*$.data.UI.panel.hpw);
+					hp_bound = Math.floor(ch.health.hp_bound/ch.health.hp_full*$.data.UI.panel.hpw);
+				if( hp<0) hp=0;
+				if( hp_bound<0) hp_bound=0;
+				$.panel[i].hp.set_w(hp);
+				$.panel[i].hp_bound.set_w(hp_bound);
+				$.panel[i].mp.set_w(Math.floor(ch.health.mp/ch.health.mp_full*$.data.UI.panel.mpw));
+			}
 		}
 	}
 
@@ -7328,8 +7676,8 @@ Global)
 		effects_config.stage = $.stage;
 
 		var param = Futil.extract_array( $.grouped_object.effects, ['data','id']);
-		$.effect[0] = new factory.effects ( effects_config, param.data, param.id);
-		$.visualeffect = $.effect[0];
+		$.effects[0] = new factory.effects ( effects_config, param.data, param.id);
+		$.visualeffect = $.effects[0];
 	}
 
 	match.prototype.drop_weapons=function(setup)
@@ -7352,15 +7700,11 @@ Global)
 		{
 			match: $
 		};
-		var res=Futil.arr_search(
-			$.grouped_object[weapon],
-			function (X) { return X.id===id;}
-		);
-		var object = $.grouped_object[weapon][res];
+		var object = util.select_from($.grouped_object[weapon],{id:id});
 		var wea = new factory[weapon]( wea_config, object.data, object.id);
 		wea.set_pos(pos.x,pos.y,pos.z);
 		var uid = $.scene.add(wea);
-		$.weapon[uid] = wea;
+		$[weapon][uid] = wea;
 	}
 
 	match.prototype.create_background=function(bg)
@@ -7445,7 +7789,7 @@ Global)
 						if( $.time.paused)
 						{
 							$.pause_mess.hide();
-							setTimeout(show_pause,2);
+							setTimeout(show_pause,2); //so that the 'pause' message blinks
 						}
 						else
 							$.pause_mess.hide();
