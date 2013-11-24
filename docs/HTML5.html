@@ -19,9 +19,10 @@ F.LF should be able to run as a standalone application offline, without the need
 ### Flash
 If possible, HTML5 features should be used. Flash fallback is not necessary, and should be avoided at all costs.
 
-## Graphics (general)
+## Graphics
 PNG with transparency is well supported by all browsers. Image rotation, scaling and mirror is also well supported.
 
+<!--
 ## Graphics (DOM vs Canvas)
 One of the most asked questions is why DOM is employed instead of Canvas in F.LF. Here is a long explanation. It starts from the requirement of a render engine:
 
@@ -46,6 +47,9 @@ It is always debatable on different types of benchmarks and their implications. 
 > 
 > The best strategy is to take the path of least effort, and only invest effort when something is proven too slow.
 
+#### Update
+There are some really good graphics engine on top of Canvas out there, powerful enough and proven to be fast, for example KineticJS and CreateJS. It will be fairer if we can compare DOM to them directly.
+-->
 
 ## Sound
 Flash actually has a very good sound playback performance and functionality. HTML5 sound works **A**cross **A**ll **M**ajor **B**rowsers (Chrome, Firefox, IE) (AAMB), but does not support multi-burst (or whatever you call it, the same sound being played overlapped at different times). The quirk is, Firefox refuses to support patented MP3 and IE refuses to support free OGG. The work around is:
