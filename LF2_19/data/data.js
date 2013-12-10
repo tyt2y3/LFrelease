@@ -35,7 +35,7 @@ define({
 	background:
 	[
 		{id:1, file:'bg/cuhk/bg.js'},
-		{id:10,file:'bg/template/1/bg.js'}
+		{id:10,file:'bg/template/bg.js'}
 	],
 
 	UI: {file:'data/UI.js'},
