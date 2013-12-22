@@ -147,7 +147,8 @@ define({
     }
   },
   9: { name: "running",
-    pic: 20, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/003.ogg",
+    pic: 20, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/003",
     bpoint: {
       x: 57, y: 50
     },
@@ -171,7 +172,8 @@ define({
     }
   },
   11: { name: "running",
-    pic: 22, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 26, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/004.ogg",
+    pic: 22, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 26, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/004",
     wpoint: {
       kind: 1, x: 60, y: 42, weaponact: 34, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -228,7 +230,8 @@ define({
     }
   },
   16: { name: "heavy_obj_run",
-    pic: 125, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 35, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/003.ogg",
+    pic: 125, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 35, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/003",
     bpoint: {
       x: 37, y: 34
     },
@@ -252,7 +255,8 @@ define({
     }
   },
   18: { name: "heavy_obj_run",
-    pic: 127, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 31, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/004.ogg",
+    pic: 127, state: 2, wait: 3, next: 0, dvx: 0, dvy: 0, dvz: 0, centerx: 31, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/004",
     bpoint: {
       x: 33, y: 34
     },
@@ -264,7 +268,8 @@ define({
     }
   },
   19: { name: "heavy_stop_run",
-    pic: 128, state: 15, wait: 7, next: 999, dvx: 2, dvy: 0, dvz: 0, centerx: 29, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/009.ogg",
+    pic: 128, state: 15, wait: 7, next: 999, dvx: 2, dvy: 0, dvz: 0, centerx: 29, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/009",
     bpoint: {
       x: 30, y: 40
     },
@@ -285,7 +290,8 @@ define({
     }
   },
   21: { name: "normal_weapon_atck",
-    pic: 71, state: 3, wait: 1, next: 22, dvx: 0, dvy: 0, dvz: 0, centerx: 33, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/008.ogg",
+    pic: 71, state: 3, wait: 1, next: 22, dvx: 0, dvy: 0, dvz: 0, centerx: 33, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/008",
     wpoint: {
       kind: 1, x: 38, y: 16, weaponact: 32, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -326,7 +332,8 @@ define({
     }
   },
   26: { name: "normal_weapon_atck",
-    pic: 75, state: 3, wait: 1, next: 27, dvx: 0, dvy: 0, dvz: 0, centerx: 36, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/008.ogg",
+    pic: 75, state: 3, wait: 1, next: 27, dvx: 0, dvy: 0, dvz: 0, centerx: 36, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/008",
     wpoint: {
       kind: 1, x: 53, y: 42, weaponact: 32, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -362,7 +369,8 @@ define({
     }
   },
   31: { name: "jump_weapon_atck",
-    pic: 81, state: 3, wait: 1, next: 32, dvx: 0, dvy: 0, dvz: 0, centerx: 22, centery: 85, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/008.ogg",
+    pic: 81, state: 3, wait: 1, next: 32, dvx: 0, dvy: 0, dvz: 0, centerx: 22, centery: 85, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/008",
     wpoint: {
       kind: 1, x: 34, y: 13, weaponact: 33, attacking: 2, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -413,7 +421,8 @@ define({
     }
   },
   36: { name: "run_weapon_atck",
-    pic: 85, state: 3, wait: 1, next: 37, dvx: 4, dvy: 0, dvz: 0, centerx: 26, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/008.ogg",
+    pic: 85, state: 3, wait: 1, next: 37, dvx: 4, dvy: 0, dvz: 0, centerx: 26, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/008",
     wpoint: {
       kind: 1, x: 50, y: 52, weaponact: 22, attacking: 3, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -440,7 +449,8 @@ define({
     }
   },
   41: { name: "dash_weapon_atck",
-    pic: 91, state: 3, wait: 1, next: 42, dvx: 0, dvy: 0, dvz: 0, centerx: 20, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/008.ogg",
+    pic: 91, state: 3, wait: 1, next: 42, dvx: 0, dvy: 0, dvz: 0, centerx: 20, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/008",
     wpoint: {
       kind: 1, x: 31, y: 14, weaponact: 33, attacking: 4, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -496,7 +506,8 @@ define({
     ]
   },
   46: { name: "light_weapon_thw",
-    pic: 95, state: 15, wait: 1, next: 47, dvx: 0, dvy: 0, dvz: 0, centerx: 37, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/008.ogg",
+    pic: 95, state: 15, wait: 1, next: 47, dvx: 0, dvy: 0, dvz: 0, centerx: 37, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/008",
     wpoint: {
       kind: 1, x: 38, y: 14, weaponact: 32, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -528,7 +539,8 @@ define({
     }
   },
   51: { name: "heavy_weapon_thw",
-    pic: 28, state: 15, wait: 7, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 34, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 28, state: 15, wait: 7, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 34, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     wpoint: {
       kind: 1, x: 93, y: 37, weaponact: 10, attacking: 0, cover: 0, dvx: 15, dvy: -4, dvz: 2
     },
@@ -551,7 +563,8 @@ define({
     }
   },
   53: { name: "sky_lgt_wp_thw",
-    pic: 98, state: 15, wait: 1, next: 54, dvx: 0, dvy: -2, dvz: 0, centerx: 25, centery: 72, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/008.ogg",
+    pic: 98, state: 15, wait: 1, next: 54, dvx: 0, dvy: -2, dvz: 0, centerx: 25, centery: 72, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/008",
     wpoint: {
       kind: 1, x: 39, y: 12, weaponact: 34, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -574,7 +587,8 @@ define({
     ]
   },
   55: { name: "weapon_drink",
-    pic: 132, state: 17, wait: 3, next: 56, dvx: 0, dvy: 0, dvz: 0, centerx: 35, centery: 79, hit_a: 0, hit_d: 999, hit_j: 0, sound: "sound/042.ogg",
+    pic: 132, state: 17, wait: 3, next: 56, dvx: 0, dvy: 0, dvz: 0, centerx: 35, centery: 79, hit_a: 0, hit_d: 999, hit_j: 0,
+    sound: "soundpack/1/042",
     wpoint: {
       kind: 1, x: 49, y: 22, weaponact: 31, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -619,7 +633,8 @@ define({
     }
   },
   61: { name: "punch",
-    pic: 18, state: 3, wait: 1, next: 62, dvx: 0, dvy: 0, dvz: 0, centerx: 23, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 18, state: 3, wait: 1, next: 62, dvx: 0, dvy: 0, dvz: 0, centerx: 23, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     itr: {
       kind: 0, x: 8, y: 47, w: 43, h: 17, dvx: 2, fall: 25, bdefend: 30, injury: 35, effect: 1
     },
@@ -656,7 +671,8 @@ define({
     }
   },
   66: { name: "punch",
-    pic: 19, state: 3, wait: 1, next: 67, dvx: 0, dvy: 0, dvz: 0, centerx: 25, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 19, state: 3, wait: 1, next: 67, dvx: 0, dvy: 0, dvz: 0, centerx: 25, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     itr: {
       kind: 0, x: 24, y: 32, w: 48, h: 23, fall: 25, bdefend: 30, injury: 35, effect: 1
     },
@@ -699,7 +715,8 @@ define({
     }
   },
   72: { name: "super_punch",
-    pic: 38, state: 3, wait: 2, next: 73, dvx: 0, dvy: 0, dvz: 0, centerx: 15, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 38, state: 3, wait: 2, next: 73, dvx: 0, dvy: 0, dvz: 0, centerx: 15, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     itr: {
       kind: 0, x: 21, y: 42, w: 57, h: 35, dvx: 5, fall: 70, vrest: 15, bdefend: 60, injury: 10, effect: 1
     },
@@ -714,7 +731,8 @@ define({
     }
   },
   80: { name: "jump_attack",
-    pic: 14, state: 3, wait: 1, next: 81, dvx: 0, dvy: 0, dvz: 0, centerx: 28, centery: 80, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 14, state: 3, wait: 1, next: 81, dvx: 0, dvy: 0, dvz: 0, centerx: 28, centery: 80, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     bdy: {
       kind: 0, x: 12, y: 12, w: 30, h: 63
     }
@@ -741,7 +759,8 @@ define({
     }
   },
   86: { name: "run_attack",
-    pic: 103, state: 3, wait: 2, next: 87, dvx: 4, dvy: 0, dvz: 0, centerx: 19, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 103, state: 3, wait: 2, next: 87, dvx: 4, dvy: 0, dvz: 0, centerx: 19, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     itr: {
       kind: 0, x: 41, y: 4, w: 36, h: 50, dvx: -3, dvy: 12, bdefend: 65, injury: 60, effect: 1
     },
@@ -780,7 +799,8 @@ define({
     ]
   },
   90: { name: "dash_attack",
-    pic: 106, state: 15, wait: 1, next: 91, dvx: 0, dvy: 0, dvz: 0, centerx: 40, centery: 77, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 106, state: 15, wait: 1, next: 91, dvx: 0, dvy: 0, dvz: 0, centerx: 40, centery: 77, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     bdy: {
       kind: 0, x: 22, y: 7, w: 44, h: 62
     }
@@ -815,7 +835,8 @@ define({
     ]
   },
   100: { name: "rowing",
-    pic: 66, state: 6, wait: 2, next: 101, dvx: 0, dvy: 0, dvz: 0, centerx: 39, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/017.ogg",
+    pic: 66, state: 6, wait: 2, next: 101, dvx: 0, dvy: 0, dvz: 0, centerx: 39, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/017",
     wpoint: {
       kind: 1, x: 36, y: 42, weaponact: 32, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     }
@@ -881,7 +902,8 @@ define({
     }
   },
   108: { name: "rowing",
-    pic: 117, state: 6, wait: 3, next: 109, dvx: 0, dvy: 0, dvz: 0, centerx: 45, centery: 62, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/017.ogg",
+    pic: 117, state: 6, wait: 3, next: 109, dvx: 0, dvy: 0, dvz: 0, centerx: 45, centery: 62, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/017",
     wpoint: {
       kind: 1, x: 37, y: 34, weaponact: 35, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     }
@@ -947,7 +969,8 @@ define({
     }
   },
   115: { name: "picking_light",
-    pic: 36, state: 15, wait: 4, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/009.ogg",
+    pic: 36, state: 15, wait: 4, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/009",
     wpoint: {
       kind: 1, x: 27, y: 75, weaponact: 24, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -956,7 +979,8 @@ define({
     }
   },
   116: { name: "picking_heavy",
-    pic: 36, state: 15, wait: 2, next: 117, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/009.ogg",
+    pic: 36, state: 15, wait: 2, next: 117, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/009",
     wpoint: {
       kind: 1, x: 10, y: 79, weaponact: 10, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -974,7 +998,8 @@ define({
     }
   },
   120: { name: "catching",
-    pic: 51, state: 9, wait: 2, next: 121, dvx: 0, dvy: 0, dvz: 0, centerx: 36, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/015.ogg",
+    pic: 51, state: 9, wait: 2, next: 121, dvx: 0, dvy: 0, dvz: 0, centerx: 36, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/015",
     cpoint: {
       kind: 1, x: 67, y: 39, vaction: 131, throwvz: -842150451, hurtable: 1, throwinjury: -842150451, decrease: 7
     },
@@ -1010,7 +1035,8 @@ define({
     }
   },
   123: { name: "catching",
-    pic: 52, state: 9, wait: 3, next: 121, dvx: 0, dvy: 0, dvz: 0, centerx: 39, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/014.ogg",
+    pic: 52, state: 9, wait: 3, next: 121, dvx: 0, dvy: 0, dvz: 0, centerx: 39, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/014",
     cpoint: {
       kind: 1, x: 58, y: 38, injury: 15, vaction: 132, throwvz: -842150451, hurtable: 1, throwinjury: -842150451, decrease: 3
     },
@@ -1407,7 +1433,8 @@ define({
     }
   },
   211: { name: "jump",
-    pic: 61, state: 4, wait: 1, next: 212, dvx: 0, dvy: 0, dvz: 0, centerx: 34, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/017.ogg",
+    pic: 61, state: 4, wait: 1, next: 212, dvx: 0, dvy: 0, dvz: 0, centerx: 34, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/017",
     wpoint: {
       kind: 1, x: 16, y: 60, weaponact: 20, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1461,7 +1488,8 @@ define({
     ]
   },
   215: { name: "crouch",
-    pic: 60, state: 15, wait: 2, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/012.ogg",
+    pic: 60, state: 15, wait: 2, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 32, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/012",
     wpoint: {
       kind: 1, x: 20, y: 59, weaponact: 35, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1496,7 +1524,8 @@ define({
     }
   },
   218: { name: "stop_running",
-    pic: 114, state: 15, wait: 5, next: 999, dvx: 1, dvy: 0, dvz: 0, centerx: 39, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/009.ogg",
+    pic: 114, state: 15, wait: 5, next: 999, dvx: 1, dvy: 0, dvz: 0, centerx: 39, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/009",
     bpoint: {
       x: 35, y: 41
     },
@@ -1513,7 +1542,8 @@ define({
     ]
   },
   219: { name: "crouch2",
-    pic: 60, state: 15, wait: 2, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 33, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/012.ogg",
+    pic: 60, state: 15, wait: 2, next: 999, dvx: 0, dvy: 0, dvz: 0, centerx: 33, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/012",
     wpoint: {
       kind: 1, x: 20, y: 59, weaponact: 35, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1668,7 +1698,8 @@ define({
     }
   },
   233: { name: "throw_lying_man",
-    pic: 28, state: 9, wait: 1, next: 234, dvx: 0, dvy: 0, dvz: 0, centerx: 35, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 28, state: 9, wait: 1, next: 234, dvx: 0, dvy: 0, dvz: 0, centerx: 35, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     cpoint: {
       kind: 1, x: 72, y: 53, vaction: 181, throwvx: 13, throwvy: -7, throwvz: 3, throwinjury: 30
     },
@@ -1699,7 +1730,8 @@ define({
     ]
   },
   235: { name: "blast",
-    pic: 135, state: 3, wait: 1, next: 236, dvx: 0, dvy: 0, dvz: 0, centerx: 34, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, mp: 75, sound: "sound/043.ogg",
+    pic: 135, state: 3, wait: 1, next: 236, dvx: 0, dvy: 0, dvz: 0, centerx: 34, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, mp: 75,
+    sound: "soundpack/1/043",
     wpoint: {
       kind: 1, x: 43, y: 50, weaponact: 34, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1713,7 +1745,8 @@ define({
     ]
   },
   236: { name: "blast",
-    pic: 136, state: 3, wait: 2, next: 237, dvx: 0, dvy: 0, dvz: 0, centerx: 15, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 136, state: 3, wait: 2, next: 237, dvx: 0, dvy: 0, dvz: 0, centerx: 15, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     wpoint: {
       kind: 1, x: 49, y: 45, weaponact: 20, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1773,7 +1806,8 @@ define({
     }
   },
   240: { name: "blast2",
-    pic: 78, state: 3, wait: 1, next: 241, dvx: 0, dvy: 0, dvz: 0, centerx: 50, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, mp: 75, sound: "sound/043.ogg",
+    pic: 78, state: 3, wait: 1, next: 241, dvx: 0, dvy: 0, dvz: 0, centerx: 50, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, mp: 75,
+    sound: "soundpack/1/043",
     wpoint: {
       kind: 1, x: 66, y: 43, weaponact: 34, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1787,7 +1821,8 @@ define({
     ]
   },
   241: { name: "blast2",
-    pic: 79, state: 3, wait: 1, next: 242, dvx: 0, dvy: 0, dvz: 0, centerx: 48, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 79, state: 3, wait: 1, next: 242, dvx: 0, dvy: 0, dvz: 0, centerx: 48, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     wpoint: {
       kind: 1, x: 63, y: 40, weaponact: 35, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1834,7 +1869,8 @@ define({
     }
   },
   245: { name: "blast3",
-    pic: 100, state: 3, wait: 1, next: 246, dvx: 0, dvy: 0, dvz: 0, centerx: 45, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, mp: 75, sound: "sound/043.ogg",
+    pic: 100, state: 3, wait: 1, next: 246, dvx: 0, dvy: 0, dvz: 0, centerx: 45, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, mp: 75,
+    sound: "soundpack/1/043",
     wpoint: {
       kind: 1, x: 35, y: 46, weaponact: 20, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1848,7 +1884,8 @@ define({
     ]
   },
   246: { name: "blast3",
-    pic: 101, state: 3, wait: 1, next: 247, dvx: 0, dvy: 0, dvz: 0, centerx: 45, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/007.ogg",
+    pic: 101, state: 3, wait: 1, next: 247, dvx: 0, dvy: 0, dvz: 0, centerx: 45, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/007",
     wpoint: {
       kind: 1, x: 35, y: 51, weaponact: 35, attacking: 0, cover: 0, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1913,7 +1950,8 @@ define({
     }
   },
   261: { name: "jump_sword",
-    pic: 141, state: 3, wait: 1, next: 262, dvx: 0, dvy: 0, dvz: 0, centerx: 26, centery: 68, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 141, state: 3, wait: 1, next: 262, dvx: 0, dvy: 0, dvz: 0, centerx: 26, centery: 68, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 35, y: 40, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1970,7 +2008,8 @@ define({
     }
   },
   266: { name: "jump_sword",
-    pic: 145, state: 3, wait: 1, next: 267, dvx: 9, dvy: -7, dvz: 0, centerx: 50, centery: 81, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/017.ogg",
+    pic: 145, state: 3, wait: 1, next: 267, dvx: 9, dvy: -7, dvz: 0, centerx: 50, centery: 81, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/017",
     wpoint: {
       kind: 1, x: 62, y: 44, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -1997,7 +2036,8 @@ define({
     }
   },
   269: { name: "jump_sword",
-    pic: 148, state: 3, wait: 1, next: 270, dvx: 0, dvy: 0, dvz: 0, centerx: 51, centery: 77, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 148, state: 3, wait: 1, next: 270, dvx: 0, dvy: 0, dvz: 0, centerx: 51, centery: 77, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 57, y: 42, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -2072,7 +2112,8 @@ define({
     }
   },
   278: { name: "jump_sword2",
-    pic: 150, state: 3, wait: 1, next: 279, dvx: 0, dvy: 0, dvz: 0, centerx: 12, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 150, state: 3, wait: 1, next: 279, dvx: 0, dvy: 0, dvz: 0, centerx: 12, centery: 79, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 22, y: 49, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -2135,7 +2176,8 @@ define({
     }
   },
   290: { name: "dash_sword",
-    pic: 160, state: 301, wait: 1, next: 291, dvx: 3, dvy: 0, dvz: 0, centerx: 25, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, mp: 150, sound: "sound/045.ogg",
+    pic: 160, state: 301, wait: 1, next: 291, dvx: 3, dvy: 0, dvz: 0, centerx: 25, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, mp: 150,
+    sound: "soundpack/1/045",
     wpoint: {
       kind: 1, x: 31, y: 52, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -2144,7 +2186,8 @@ define({
     }
   },
   291: { name: "dash_sword",
-    pic: 161, state: 301, wait: 1, next: 292, dvx: 6, dvy: 0, dvz: 0, centerx: 18, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 161, state: 301, wait: 1, next: 292, dvx: 6, dvy: 0, dvz: 0, centerx: 18, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 22, y: 52, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -2197,7 +2240,8 @@ define({
     }
   },
   295: { name: "dash_sword",
-    pic: 165, state: 301, wait: 1, next: 296, dvx: 12, dvy: 0, dvz: 0, centerx: 44, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 165, state: 301, wait: 1, next: 296, dvx: 12, dvy: 0, dvz: 0, centerx: 44, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 43, y: 52, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -2245,7 +2289,8 @@ define({
     }
   },
   299: { name: "dash_sword",
-    pic: 169, state: 301, wait: 1, next: 300, dvx: 12, dvy: 0, dvz: 0, centerx: 19, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 169, state: 301, wait: 1, next: 300, dvx: 12, dvy: 0, dvz: 0, centerx: 19, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 31, y: 52, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -2293,7 +2338,8 @@ define({
     }
   },
   303: { name: "dash_sword",
-    pic: 176, state: 301, wait: 1, next: 304, dvx: 6, dvy: 0, dvz: 0, centerx: 31, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 176, state: 301, wait: 1, next: 304, dvx: 6, dvy: 0, dvz: 0, centerx: 31, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 49, y: 52, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },
@@ -2377,7 +2423,8 @@ define({
     }
   },
   311: { name: "dash_sword",
-    pic: 169, state: 301, wait: 1, next: 300, dvx: 2, dvy: 0, dvz: 0, centerx: 19, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0, sound: "sound/054.ogg",
+    pic: 169, state: 301, wait: 1, next: 300, dvx: 2, dvy: 0, dvz: 0, centerx: 19, centery: 78, hit_a: 0, hit_d: 0, hit_j: 0,
+    sound: "soundpack/1/054",
     wpoint: {
       kind: 1, x: 31, y: 52, weaponact: 31, attacking: 0, cover: 1, dvx: 0, dvy: 0, dvz: 0
     },

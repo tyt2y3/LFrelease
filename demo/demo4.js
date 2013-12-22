@@ -28,9 +28,6 @@ var master_controller = (function()
 	} else if (document.attachEvent){
 		document.attachEvent("keydown", keydown);
 		document.attachEvent("keyup", keyup);
-	} else {
-		//window.onkeydown = F.double_delegate(window.onkeydown, keydown);
-		//window.onkeyup   = F.double_delegate(window.onkeydown, keyup);
 	}
 
 	var mas = new Object();
@@ -45,8 +42,9 @@ var master_controller = (function()
 		}
 		//the follow section blocks some browser-native key events, including ctrl+f and F1~F12
 		e.cancelBubble = true;
-		e.returnValue = false;
-		if (e.stopPropagation)
+		if( e.returnValue)
+			e.returnValue = false;
+		if( e.stopPropagation)
 		{
 			e.stopPropagation();
 			e.preventDefault();
@@ -142,7 +140,7 @@ function controller (config)
 	/*\
 	 * controller.zppendix
 	 * on the other hand, there can be other controllers with compatible definition and behavior,
-	 * (e.g. AI controller, network player controller, record playback controller)
+	 * (e.g. touch controller, AI controller, network player controller, record playback controller)
 	 * - has the properties `state`, `config`, `child`, `sync`
 	 * - behavior: call the `key` method of every member of `child` when keys arrive
 	 * - has the method `clear_states`, `fetch` and `flush`
@@ -204,16 +202,16 @@ controller.prototype.clear_states=function()
 \*/
 controller.prototype.fetch=function()
 {
-	for( var i in this.buf)
+	for( var i=0; i<this.buf.length; i++)
 	{
 		var I=this.buf[i][0];
 		var down=this.buf[i][1];
 		if( this.child)
-			for(var J in this.child)
-				this.child[J].key(I,down);
+			for(var j=0; j<this.child.length; j++)
+				this.child[j].key(I,down);
 		this.state[I]=down;
 	}
-	this.buf=[];
+	this.buf.length=0;
 }
 /*\
  * controller.flush
@@ -386,7 +384,7 @@ define('F.core/css!F.core/style.css', ['F.core/css-embed'],
 function(embed)
 {
 	embed(
-	'.F_sprite { position:absolute; overflow:hidden; width:10px; height:10px; } .F_sprite_inline { overflow:hidden; width:10px; height:10px; } .F_sprite_img { position:absolute; } .canvas { position:relative; width:800px; /*height:577px;*/ height:300px; border:1px solid #000; } .page { position: absolute; left: 0px; top: 0px; border: 1px solid #000; z-index: 10000; } '
+	'.F_sprite { position:absolute; overflow:hidden; width:10px; height:10px; } .F_sprite_group { position:absolute; } .F_sprite_inline { overflow:hidden; width:10px; height:10px; } .F_sprite_img { position:absolute; } /* .canvas { position:relative; width:800px; height:300px; border:1px solid #000; } .page { position: absolute; left: 0px; top: 0px; border: 1px solid #000; z-index: 10000; }*/'
 	);
 	return true;
 });
@@ -540,39 +538,7 @@ define('F.core/support',[],function()
 	}());
 	//--] end
 
-	//support requestAnimationFrame
-	//[--adapted from https://gist.github.com/1579671
-	// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-	// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
-
-	// requestAnimationFrame shim by Erik Möller
-	// fixes from Paul Irish and Tino Zijdel
-	(function() {
-		var lastTime = 0;
-		var vendors = ['ms', 'moz', 'webkit', 'o'];
-		for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-			window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
-			window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] 
-			|| window[vendors[x]+'CancelRequestAnimationFrame'];
-		}
-
-		if (!window.requestAnimationFrame)
-			window.requestAnimationFrame = function(callback, element) {
-				var currTime = new Date().getTime();
-				var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-				var id = window.setTimeout(function() { callback(currTime + timeToCall); }, 
-					timeToCall);
-				lastTime = currTime + timeToCall;
-				return id;
-			};
-
-		if (!window.cancelAnimationFrame)
-			window.cancelAnimationFrame = function(id) {
-			clearTimeout(id);
-			};
-	}());
-	//--] end
-
+	/// because IE9/10 has no localstorage on local file
 	// Storage polyfill by Remy Sharp
 	// [--
 	// https://github.com/inexorabletash/polyfill/blob/master/storage.js
@@ -683,8 +649,8 @@ define('F.core/support',[],function()
 			};
 		};
 
-		if (!window.localStorage) support.localStorage = window.localStorage = new Storage('local');
-		if (!window.sessionStorage) support.sessionStorage = window.sessionStorage = new Storage('session');
+		if (!window.localStorage) support.localStorage = new Storage('local');
+		if (!window.sessionStorage) support.sessionStorage = new Storage('session');
 
 	}());
 	else
@@ -693,6 +659,11 @@ define('F.core/support',[],function()
 		support.sessionStorage = window.sessionStorage;
 	}
 	//--]
+
+	/// because IE9 has no classList
+	//classList shim by eligrey
+	/*! @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js*/
+	if("document" in self&&!("classList" in document.createElement("_")&&"classList" in document.createElementNS("http://www.w3.org/2000/svg","svg"))){(function(j){if(!("Element" in j)){return}var a="classList",f="prototype",m=j.Element[f],b=Object,k=String[f].trim||function(){return this.replace(/^\s+|\s+$/g,"")},c=Array[f].indexOf||function(q){var p=0,o=this.length;for(;p<o;p++){if(p in this&&this[p]===q){return p}}return -1},n=function(o,p){this.name=o;this.code=DOMException[o];this.message=p},g=function(p,o){if(o===""){throw new n("SYNTAX_ERR","An invalid or illegal string was specified")}if(/\s/.test(o)){throw new n("INVALID_CHARACTER_ERR","String contains an invalid character")}return c.call(p,o)},d=function(s){var r=k.call(s.getAttribute("class")),q=r?r.split(/\s+/):[],p=0,o=q.length;for(;p<o;p++){this.push(q[p])}this._updateClassName=function(){s.setAttribute("class",this.toString())}},e=d[f]=[],i=function(){return new d(this)};n[f]=Error[f];e.item=function(o){return this[o]||null};e.contains=function(o){o+="";return g(this,o)!==-1};e.add=function(){var s=arguments,r=0,p=s.length,q,o=false;do{q=s[r]+"";if(g(this,q)===-1){this.push(q);o=true}}while(++r<p);if(o){this._updateClassName()}};e.remove=function(){var t=arguments,s=0,p=t.length,r,o=false;do{r=t[s]+"";var q=g(this,r);if(q!==-1){this.splice(q,1);o=true}}while(++s<p);if(o){this._updateClassName()}};e.toggle=function(p,q){p+="";var o=this.contains(p),r=o?q!==true&&"remove":q!==false&&"add";if(r){this[r](p)}return !o};e.toString=function(){return this.join(" ")};if(b.defineProperty){var l={get:i,enumerable:true,configurable:true};try{b.defineProperty(m,a,l)}catch(h){if(h.number===-2146823252){l.enumerable=false;b.defineProperty(m,a,l)}}}else{if(b[f].__defineGetter__){m.__defineGetter__(a,i)}}}(self))};
 
 	return support;
 });
@@ -986,10 +957,13 @@ group_elements: function(arr,key)
 	var group={};
 	for( var i=0; i<arr.length; i++)
 	{
-		var gp=arr[i][key];
-		if( !group[gp])
-			group[gp]=[];
-		group[gp].push(arr[i]);
+		if( arr[i][key])
+		{
+			var gp=arr[i][key];
+			if( !group[gp])
+				group[gp]=[];
+			group[gp].push(arr[i]);
+		}
 	}
 	return group;
 },
@@ -1170,11 +1144,13 @@ var sp_masterconfig = module.config() || {};
  * {
  - canvas (object) `div` DOM node to create and append sprites to; __or__
  - div    (object) `div` DOM node, if specified, will use this `div` as sprite instead of creating a new one
+ * must have `canvas` or `div` property. properties below are optional
  - wh     (object) width and height; __or__
  - wh     (string) 'fit' fit to image size
  - img    (object) image list
  - { name (string) image path }; __or__
  - img    (string) if you have only one image. in this case the image will be named '0'
+ - type   (string) `'group'`: create as sprite group
  * }
  * 
  * config is one time only and will be dumped, without keeping a reference, after constructor returns. that means it is okay to reuse config objects, in loops or other contexts.
@@ -1199,25 +1175,22 @@ function sprite (config)
 	 [ property ]
 	 * the `div` element
 	\*/
+	var classname = 'F_sprite';
+	if( config.type==='group')
+		classname = 'F_sprite_group';
+	else if( config.div)
+		classname = 'F_sprite_inline';
 	if( config.div)
 	{
 		this.el = config.div;
-		if( this.el.className)
-			this.el.className += ' F_sprite_inline';
-		else
-			this.el.className = 'F_sprite_inline';
+		this.el.classList.add(classname);
 		if( window.getComputedStyle(this.el).getPropertyValue('position')==='static')
 			this.el.style.position='relative';
-	}
-	else if( config.inplace_div)
-	{
-		this.inline_img=true;
-		this.el = config.inplace_div;
 	}
 	else
 	{
 		this.el = document.createElement('div');
-		this.el.className = 'F_sprite';
+		this.el.className = classname;
 		if( config.canvas)
 			config.canvas.appendChild(this.el);
 	}
@@ -1247,7 +1220,7 @@ function sprite (config)
 		else
 			this.add_img(config.img, '0');
 	}
-	if( config.div)
+	if( config.div && config.type!=='group')
 	{	//adopt images in `div`
 		var img = config.div.getElementsByTagName('img');
 		for( var i=0; i<img.length; i++)
@@ -1493,8 +1466,7 @@ sprite.prototype.add_img=function(imgpath,Name)
 {
 	var This=this;
 	var im = document.createElement('img');
-	if( !this.inline_img)
-		im.setAttribute('class','F_sprite_img');
+	im.setAttribute('class','F_sprite_img');
 	im.addEventListener('load', onload, true);
 	function onload()
 	{
@@ -1520,10 +1492,7 @@ sprite.prototype.add_img=function(imgpath,Name)
 sprite.prototype.adopt_img=function(im)
 {
 	var Name=im.getAttribute('name');
-	if( im.className)
-		im.className += ' F_sprite_img';
-	else
-		im.className = 'F_sprite_img';
+	im.classList.add('F_sprite_img');
 	if( !im.naturalWidth) im.naturalWidth=im.width;
 	if( !im.naturalHeight) im.naturalHeight=im.height;
 	if( !im.naturalWidth && !im.naturalHeight)
@@ -1738,7 +1707,8 @@ util.div=function(classname)
 		util.container = document.getElementsByClassName('LFcontainer')[0];
 		if( !util.container) return null;
 	}
-	return util.container.getElementsByClassName('LF'+classname)[0];
+	if( !classname) return util.container;
+	return util.container.getElementsByClassName(classname)[0];
 }
 
 util.filename=function(file)
@@ -1797,6 +1767,19 @@ util.setup_resourcemap=function(package,Fsprite)
 		Fsprite.masterconfig_set('baseUrl',package.location);
 }
 
+//return the parameters passed by location
+util.location_parameters=function()
+{
+	var param = window.location.href.split('/').pop();
+	if( param.indexOf('?')!==-1)
+	{
+		var param = param.split('?').pop().split('&');
+		for( var i=0; i<param.length; i++)
+			param[i] = param[i].split('=');
+		return param;
+	}
+}
+
 return util;
 });
 
@@ -1821,10 +1804,6 @@ GA.viewer={};
 GA.viewer.height=400;
 GA.camera={};
 GA.camera.speed_factor=1/18;
-GA.panel={};
-GA.panel.pane={};
-GA.panel.pane.width=198;
-GA.panel.pane.height=54;
 
 /*\
  * global.combo_list
@@ -1908,7 +1887,7 @@ GC.default.health.mp_start=200; //it cannot be overriden
 
 GC.default.itr={};
 GC.default.itr.zwidth= 12; //default itr zwidth
-GC.default.itr.hit_stall= 3; //default stall when hit somebody
+GC.default.itr.hit_stop= 3; //default stall when hit somebody
 GC.default.itr.throw_injury= 10;
 
 GC.default.cpoint={};
@@ -1998,7 +1977,7 @@ GC.friction.fell=    //defined friction at the moment of fell onto ground
 	6:4, //smaller or equal to 6, value is 4
 	9:5,
 	13:7,
-	15:9
+	25:9 //guess entry
 }
 
 GC.min_speed= 1; //defined minimum speed
@@ -2592,6 +2571,11 @@ sprite.prototype.show_pic = function(I)
 		}
 		else
 			break;
+	}
+	if( slot >= this.ani.length)
+	{
+		slot = this.ani.length-1;
+		I=999;
 	}
 	this.cur_img = slot;
 	this.sp.switch_img(this.cur_img);
@@ -3216,18 +3200,9 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		$.sp.show_pic($.frame.D.pic);
 
 		$.ps.fric=1; //reset friction
-		//velocity
-		if( $.frame.D.dvx)
-		{
-			var avx = $.ps.vx>0?$.ps.vx:-$.ps.vx;
-			if( $.ps.y<0 || avx < $.frame.D.dvx) //accelerate..
-				$.ps.vx = $.dirh() * $.frame.D.dvx; //..is okay
-			//decelerate must be gradual
-			if( $.frame.D.dvx<0)
-				$.ps.vx = $.ps.vx - $.dirh();
-		}
-		if( $.frame.D.dvz) $.ps.vz = $.dirv() * $.frame.D.dvz;
-		if( $.frame.D.dvy) $.ps.vy += $.frame.D.dvy;
+
+		if( !$.state_update('frame_force'))
+			$.frame_force();
 
 		//wait for next frame
 		$.trans.set_wait($.frame.D.wait,99);
@@ -3237,10 +3212,29 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		$.state_update('frame');
 	}
 
+	livingobject.prototype.frame_force = function()
+	{
+		var $=this;
+		if( $.frame.D.dvx)
+		{
+			var avx = $.ps.vx>0?$.ps.vx:-$.ps.vx;
+			var dirx = $.ps.vx===0? $.dirh() : ($.ps.vx>0?1:-1);
+			if( $.ps.y<0 || avx < $.frame.D.dvx) //accelerate..
+				$.ps.vx = dirx * $.frame.D.dvx; //..is okay
+			//decelerate must be gradual
+			if( $.frame.D.dvx<0)
+				$.ps.vx = $.ps.vx - dirx;
+		}
+		if( $.frame.D.dvz) $.ps.vz = $.dirv() * $.frame.D.dvz;
+		if( $.frame.D.dvy) $.ps.vy += $.frame.D.dvy;
+	}
+
 	//update done at every TU (30fps)
 	livingobject.prototype.TU_update = function()
 	{
 		var $=this;
+
+		$.frame_force();
 
 		//effect
 		if( $.effect.timein<0)
@@ -3320,10 +3314,10 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	{
 		var $=this;
 		var tar1=$.states['generic'];
-		if( tar1) var res1=tar1.call($,event);
+		if( tar1) var res1=tar1.apply($,arguments);
 		//
 		var tar2=$.states[$.frame.D.state];
-		if( tar2) var res2=tar2.call($,event);
+		if( tar2) var res2=tar2.apply($,arguments);
 		//
 		return res1 || res2;
 	}
@@ -3470,14 +3464,15 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	livingobject.prototype.itr_rest_update=function(uid,ITR)
 	{
 		var $=this;
-		var newrest;
+		var newrest = GC.default.character.arest;
 		//rest: cannot interact again for some time
-		if( ITR.arest)
-			newrest = ITR.arest;
-		else if( ITR.vrest)
-			newrest = ITR.vrest;
-		else
-			newrest = GC.default.character.arest;
+		if( ITR)
+		{
+			if( ITR.arest)
+				newrest = ITR.arest;
+			else if( ITR.vrest)
+				newrest = ITR.vrest;
+		}
 		$.itr.vrest[uid] = newrest;
 		//console.log('update vrest['+uid+'] of '+$.id+' to '+newrest);
 	}
@@ -3932,6 +3927,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						$.trans.frame(result, 15);
 					else
 					{
+						//console.log(ps.vx, util.lookup_abs(GC.friction.fell,ps.vx));
 						ps.vy=0; //set to zero
 						$.mech.linear_friction(
 							util.lookup_abs(GC.friction.fell,ps.vx),
@@ -4176,7 +4172,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 			case 'TU':
 				//apply movement
-				var xfactor = 1-($.dirv()?1:0)*(1/7); //reduce x speed if moving diagonally
+				var xfactor = 1-($.dirv()?1:0)*(2/7); //reduce x speed if moving diagonally
 				if( $.hold.obj && $.hold.obj.type==='heavyweapon')
 				{
 					if( dx) $.ps.vx=xfactor*$.dirh()*($.data.bmp.heavy_walking_speed);
@@ -4309,19 +4305,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				if( $.frame.D.next===999 && $.ps.y<0)
 					$.trans.set_next(212); //back to jump
 
-				if( !$.id_update('state3_frame'))
-				switch ($.frame.N)
-				{
-					case 85: case 86: //run attack
-						$.ps.fric=0.6;
-					break;
-					case 60: case 65:
-						$.ps.fric=0;
-					break;
-					case 71:
-						$.ps.fric=0.3;
-					break;
-				}
+				$.id_update('state3_frame');
 			break;
 		}},
 
@@ -4355,10 +4339,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			case 'combo':
 				if( (K==='att' || $.con.state.att) && !$.statemem.attlock)
 				{
-					/** a transition to jump_attack can only happen after entering frame 212.
-					if an 'att' key event arrives while in frame 210 or 211,
-					the jump attack event will be pended and be performed on 212
-					 */
+					// a transition to jump_attack can only happen after entering frame 212
 					if( $.frame.N===212)
 					{
 						if( $.hold.obj)
@@ -4372,7 +4353,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						else
 							$.trans.frame(80, 10); //jump attack
 						if( K==='att')
-							return 1;
+							return 1; //key consumed
 					}
 				}
 			break;
@@ -4428,13 +4409,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		{	var $=this;
 			switch (event) {
 			case 'TU':
-				if( $.frame.N>=102 && $.frame.N<=105)
-				{
-					//rowing on ground; to maintain the velocity against friction
-					$.ps.vx = $.dirh() * $.frame.D.dvx;
-					$.ps.vz = $.dirv() * $.frame.D.dvz;
-				}
-				else if( $.frame.N===100 || $.frame.N===108)
+				if( $.frame.N===100 || $.frame.N===108)
 				{
 					$.ps.vy = 0;
 				}
@@ -4781,7 +4756,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 							$.trans.frame(100);
 						else
 							$.trans.frame(108);
-						$.ps.vx = 5;
+						$.ps.vx = 5; //magic number
 						if( $.ps.vz) $.ps.vz = 2;
 						return 1;
 					}
@@ -4879,46 +4854,15 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		'301':function(event,K) //deep specific
 		{	var $=this;
 			switch (event) {
-			case 'frame':
-				$.statemem.curvx = $.ps.vx;
-				if( $.statemem.lastvx)
-					$.ps.vx = $.statemem.lastvx;
-				else
-					$.statemem.lastvx = $.ps.vx;
-				switch ($.frame.N)
-				{
-					case 294: case 295: case 297: case 298: case 299: 
-					case 301: case 302: case 303: 
-						$.mech.linear_friction(1,0);
-					break;
-				}
+			case 'frame_force':
+				if( $.frame.N!==290)
+					return 1; //disable pre update of force
 			break;
 			case 'TU':
-				if( $.statemem.curvx)
-				{
-					$.ps.vx = $.statemem.curvx;
-				}
-				switch ($.frame.N)
-				{
-					case 294: case 297: case 301: 
-						$.mech.linear_friction(1,0);
-					break;
-				}
-				if( $.statemem.curvx)
-				{
-					$.statemem.lastvx = $.ps.vx;
-					$.statemem.curvx = null;
-				}
 				$.ps.vz=$.dirv()*($.data.bmp.walking_speedz);
 			break;
-			case 'post_interaction':
-				if( $.frame.N===291 ||
-					$.frame.N===295 ||
-					$.frame.N===299 )
-					return 1;
-			break;
-			case 'hit_stall':
-				$.effect_stuck(1,2);
+			case 'hit_stop':
+				$.effect_stuck(1,2); //not stuck immediately but next frame (timein=1)
 				$.trans.inc_wait(1);
 			return 1;
 		}},
@@ -4942,17 +4886,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			case 'state3_frame':
 				switch ($.frame.N)
 				{
-				case 266:
-					$.ps.vy-=2;
-				return 1;
 				case 267:
-					$.ps.vy-=3.7;
-				return 1;
-				case 268:
-					$.ps.vy-=2;
-				return 1;
-				case 269:
-					$.ps.vy-=2;
+					$.ps.vy+=1;
 				return 1;
 				}
 			break;
@@ -5097,7 +5032,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		if( tar2) var res2=tar2.call($,'combo',K);
 		if( tar1) tar1.call($,'post_combo');
 		if( tar2) tar2.call($,'post_combo');
-		if( res1 || res2 ||
+		if( res1 || res2 || //do not store if returned true
 			K==='left' || K==='right' || K==='up' || K==='down') //dir combos are not persistent
 			$.combo_buffer.combo = null;
 	}
@@ -5326,16 +5261,17 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			case 0: //normal attack
 				for( var t in hit)
 				{
-					var team_allow = !(hit[t].type==='character' && hit[t].team===$.team);
-						//only attack characters of other teams
-
-					if( team_allow)
+					if( !(hit[t].type==='character' && hit[t].team===$.team)) //cannot attack characters of same team
+					if( !(hit[t].type!=='character' && hit[t].team===$.team && hit[t].ps.dir===$.ps.dir)) //can only attack objects of same team if head on collide
+					if( ITR.effect===undefined || ITR.effect===0 || ITR.effect===1 ||
+						(ITR.effect===4 && hit[t].type==='specialattack' && hit[t].cur_state()===3000))
 					if( $.itr_rest_test( hit[t].uid, ITR))
 					if( hit[t].hit(ITR,$,{x:$.ps.x,y:$.ps.y,z:$.ps.z},vol))
 					{	//hit you!
 						$.itr_rest_update( hit[t].uid, ITR);
+						$.log('hit:'+ITR.fall);
 						//stalls
-						if( $.state_update('hit_stall'))
+						if( $.state_update('hit_stop'))
 							; //do nothing
 						else
 							switch ($.frame.N)
@@ -5349,7 +5285,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 									$.trans.inc_wait(1);
 									break;
 								default:
-									$.effect_stuck(0,GC.default.itr.hit_stall);
+									$.effect_stuck(0,GC.default.itr.hit_stop);
 							}
 
 						//attack one enemy only
@@ -5377,7 +5313,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			{
 				$.itr_rest_update( act.hit, act);
 				//stalls
-				$.trans.inc_wait(GC.default.itr.hit_stall, 10);
+				$.trans.inc_wait(GC.default.itr.hit_stop, 10);
 			}
 		}
 	}
@@ -5930,8 +5866,7 @@ var GC=Global.gameplay;
 			case 'TU':
 				$.interaction();
 				$.mech.dynamics();
-				/*	<YinYin> hit_a is the amount of hp that will be taken from a type 3 object they start with 500hp like characters it can only be reset with F7 or negative hits - once the hp reaches 0 the type 3 object will go to frame noted in hit_d - also kind 9 itrs (john shield) deplete hp instantly.
-				*/
+				//	<YinYin> hit_a is the amount of hp that will be taken from a type 3 object they start with 500hp like characters it can only be reset with F7 or negative hits - once the hp reaches 0 the type 3 object will go to frame noted in hit_d - also kind 9 itrs (john shield) deplete hp instantly.
 				if( $.frame.D.hit_a)
 				{
 					$.health.hp -= $.frame.D.hit_a;
@@ -5941,30 +5876,42 @@ var GC=Global.gameplay;
 			break;
 
 			case 'frame':
+				if( $.frame.D.opoint)
+					$.match.create_object($.frame.D.opoint, $);
 			break;
 		}},
 
-		// State 300X - Ball States
-		// descriptions taken from
-		// http://lf-empire.de/lf2-empire/data-changing/reference-pages/182-states?showall=&start=29
-
-		/*	State 3000 - Ball Flying
-			State 3000 is the standard state for attacks.  If the ball hits other attacks with this state, it'll go to the hitting frame (10).  If it is hit by another ball or a character, it'll go to the the hit frame (20) or rebounding frame (30).
+		/*	State 300X - Ball States
+			descriptions taken from
+			http://lf-empire.de/lf2-empire/data-changing/reference-pages/182-states?showall=&start=29
 		*/
-		'3000':function(event,K)
+
+		//	State 3000 - Ball Flying is the standard state for attacks.  If the ball hits other attacks with this state, it'll go to the hitting frame (10). If it is hit by another ball or a character, it'll go to the the hit frame (20) or rebounding frame (30).
+		'3000':function(event, ITR, att, attps, rect)
 		{	var $=this;
 			switch (event) {
 			case 'hit_others':
 				$.trans.frame(10);
 			break;
-			case 'hit_by_others':
-				$.trans.frame(20);
+			case 'hit': //hit by others
+				if( att.type==='specialattack')
+				{
+					$.ps.vx = 0;
+					$.trans.frame(20);
+					return true;
+				}
+				else if( att.type==='character')
+				{
+					$.ps.vx = 0;
+					$.team = att.team;
+					$.trans.frame(30); //rebound
+					$.trans.trans(); $.TU_update(); $.trans.trans(); $.TU_update(); //transit and update immediately
+					return true;
+				}
 			break;
 		}},
 
-		/*	State 3001 - Ball Flying / Hitting
-			State 3001 is used in the hitting frames, but you can also use this state directly in the flying frames.  If the ball hits a character while it has state 3001, then it won't go to the hitting frame (20).  It's the same for states 3002 through 3004. 
-		*/
+		//	State 3001 - Ball Flying / Hitting is used in the hitting frames, but you can also use this state directly in the flying frames.  If the ball hits a character while it has state 3001, then it won't go to the hitting frame (20).  It's the same for states 3002 through 3004. 
 		'3001':function(event,K)
 		{	var $=this;
 			switch (event) {
@@ -5983,7 +5930,10 @@ var GC=Global.gameplay;
 		// chain constructor
 		livingobject.call($,config,data,thisID);
 		// constructor
+		$.team = config.team;
+		$.match = config.match;
 		$.health.hp = $.proper('hp') || GC.default.health.hp_full;
+		$.mech.mass = 0;
 		$.setup();
 	}
 	specialattack.prototype = new livingobject();
@@ -6010,10 +5960,8 @@ var GC=Global.gameplay;
 			dir='left';
 		$.switch_dir(dir);
 
-		$.frame.PN = 0;
-		$.frame.N = opoint.action;
-		$.frame.D = $.data.frame[$.frame.N];
-		$.sp.show_pic($.frame.D.pic);
+		$.trans.frame(opoint.action===0?999:opoint.action);
+		$.trans.trans();
 
 		$.ps.vx = $.dirh() * opoint.dvx;
 		$.ps.vy = opoint.dvy;
@@ -6030,9 +5978,11 @@ var GC=Global.gameplay;
 			if( ITR[j].kind===0) //kind 0
 			{
 				var vol=$.mech.volume(ITR[j]);
-				var hit= $.scene.query(vol, $, {tag:'body', not_team:$.team});
+				var hit= $.scene.query(vol, $, {tag:'body'});
 				for( var k in hit)
 				{	//for each being hit
+					if( !(hit[k].type==='character' && hit[k].team===$.team)) //cannot attack characters of same team
+					if( !(hit[k].type!=='character' && hit[k].team===$.team && hit[k].ps.dir===$.ps.dir)) //can only attack objects of same team if head on collide
 					if( $.itr_rest_test( hit[k].uid, ITR[j]))
 					if( hit[k].hit(ITR[j],$,{x:$.ps.x,y:$.ps.y,z:$.ps.z},vol))
 					{	//hit you!
@@ -6049,8 +5999,7 @@ var GC=Global.gameplay;
 	specialattack.prototype.hit=function(ITR, att, attps, rect)
 	{
 		var $=this;
-		var accept=false;
-		return accept;
+		return $.state_update('hit', ITR, att, attps, rect);
 	}
 
 	return specialattack;
@@ -7000,6 +6949,28 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 {
 	var GA = global.application;
 
+	var global_timer, global_timer_children=[];
+	function standalone(child)
+	{
+		global_timer_children.push(child);
+		if( !global_timer)
+			global_timer = setInterval(function()
+			{
+				for( var i=0; i<global_timer_children.length; i++)
+				{
+					global_timer_children[i].TU();
+				}
+			}, 1000/30); //30 fps
+	}
+
+	/* config=
+	{
+		layers:, //DOM node, layers holder, append bg layers here
+		floor:,  //DOM node, livingobjects holder, scroll this to move camera
+		scrollbar:,
+		camerachase:{character:} //camera only chase these characters
+		standalone:,	//no match, background viewer only
+	}*/
 	function background(config,data,id)
 	{
 		var $=this;
@@ -7013,7 +6984,9 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			$.shadow={x:0,y:0,img:''}
 			return;
 		}
-		$.layers;
+		$.layers=[];
+		$.timed_layers=[];
+		$.timer=0;
 		$.floor = config.floor;
 		$.data = data;
 		$.name = data.name.replace(/_/g,' ');
@@ -7041,18 +7014,19 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 			}
 		}());
 
-		$.floor.style.width=$.width+'px';
+		if( $.floor)
+			$.floor.style.width=$.width+'px';
 
 		if( config.scrollbar)
 		{
 			var sc = document.createElement('div');
 			$.scrollbar=sc;
-			sc.className = 'LFbackgroundScroll';
+			sc.className = 'backgroundScroll';
 			var child = document.createElement('div');
 			child.style.width=$.width+'px';
-			child.className = 'LFbackgroundScrollChild';
+			child.className = 'backgroundScrollChild';
 			sc.appendChild(child);
-			$.floor.parentNode.parentNode.appendChild(sc);
+			config.layers.parentNode.appendChild(sc);
 			sc.onscroll=function()
 			{
 				if( $.camera_locked)
@@ -7087,9 +7061,10 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		else
 			$.camera_locked = true;
 
-		$.layers=[];
+		//create layers
+		if( $.floor)
 		$.layers.push({
-			div:$.floor,
+			sp: new Fsprite({div:$.floor,type:'group'}),
 			ratio:1
 		});
 		var LAY = Futil.group_elements(data.layer,'width');
@@ -7097,28 +7072,124 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		{
 			var lay=
 			{
-				div: document.createElement('div'),
+				sp: new Fsprite({canvas:config.layers,type:'group'}),
 				ratio: (parseInt(i)-GA.window.width)/($.width-GA.window.width)
 			};
+			lay.sp.set_z(-1000+parseInt(i));
+			$.layers.push(lay);
 			for( var j=0; j<LAY[i].length; j++)
 			{
-				var sp_config=
+				var dlay = LAY[i][j]; //layer data
+				var sp_config;
+				if( dlay.rect)
 				{
-					canvas: lay.div,
-					wh: 'fit',
-					img: LAY[i][j].pic
+					//if `rect` is defined, `pic` will only be a dummy
+					sp_config=
+					{
+						canvas: lay.sp.el,
+						wh: {x:dlay.width, y:dlay.height}
+					}
 				}
-				var sp = new Fsprite(sp_config);
-				sp.set_x_y( LAY[i][j].x, LAY[i][j].y);
+				else if( dlay.pic)	
+				{
+					sp_config=
+					{
+						canvas: lay.sp.el,
+						wh: 'fit',
+						img: dlay.pic
+					}
+				}
+				var sp;
+				if( !dlay.loop)
+				{
+					sp = new Fsprite(sp_config);
+					sp.set_x_y( dlay.x, correct_y(dlay));
+					if( dlay.rect)
+						sp.el.style.background=color_conversion(dlay.rect);
+				}
+				else
+				{
+					sp = new Fsprite({canvas:lay.sp.el,type:'group'}); //holder
+					sp_config.canvas = sp.el;
+					sp.set_x_y(0,0);
+					for( var xx=dlay.x; xx<dlay.width; xx += dlay.loop)
+					{
+						var spi = new Fsprite(sp_config);
+						spi.set_x_y( xx, dlay.y);
+						if( dlay.rect)
+							spi.el.style.background=color_conversion(dlay.rect);
+					}
+				}
+				if( dlay.cc)
+					$.timed_layers.push({
+						sp:sp,
+						cc:dlay.cc,
+						c1:dlay.c1,
+						c2:dlay.c2
+					});
 			}
-			lay.div.className='LFbackgroundLayer';
-			lay.div.style.zIndex=-1000+parseInt(i);
-			config.layers.appendChild(lay.div);
-			$.layers.push(lay);
 		}
 
-		if( config.viewer_only)
+		if( config.standalone)
 		{
+			standalone(this);
+			$.carousel = {
+				type: config.standalone.carousel,
+				dir: 1,
+				speed: 1
+			};
+			$.camera_locked = false;
+		}
+
+		//a very strange bug for the scene 'HK Coliseum' must be solved by hard coding
+		function correct_y(dlay)
+		{
+			if( data.name==='HK Coliseum')
+			{
+				if( dlay.pic.indexOf('back1')===-1)
+					return dlay.y-8;
+				else
+					return dlay.y;
+			}
+			else
+				return dlay.y;
+		}
+	}
+
+	function color_conversion(rect)
+	{
+		if( typeof rect==='string')
+			return rect; //extended standard: CSS color format allowed
+		else if( typeof rect==='number')
+		{
+			var lookup, computed;
+			switch (rect)
+			{
+				case 4706: lookup='rgb(16,79,16)'; break; //lion forest
+				case 40179: lookup='rgb(159,163,159)'; break; //HK Coliseum
+				case 29582: lookup='rgb(119,119,119)'; break;
+				case 37773: lookup='rgb(151,119,111)'; break;
+				case 33580: lookup='rgb(135,107,103)'; break;
+				case 25356: lookup='rgb(103,103,103)'; break;
+				case 21096: lookup='rgb(90,78,75)'; break; //Stanley Prison
+				case 37770: lookup='rgb(154,110,90)'; break; //The Great Wall
+				case 16835: lookup='rgb(66,56,24)'; break; //Queen's Island
+				case 34816: lookup='rgb(143,7,7)'; break; //Forbidden Tower
+			}
+			var r = (rect>>11<<3),
+				g = (rect>>6&31)<<3,
+				b = ((rect&31)<<3);
+			computed = 'rgb('+
+				(r+(r>64||r===0?7:0))+','+
+				(g+(g>64||g===0?7:0)+((rect>>5&1)&&g>80?4:0))+','+
+				(b+(b>64||b===0?7:0))+
+				')';
+			if( lookup && computed!==lookup)
+				console.log('computed:'+computed,'correct:'+lookup);
+			if( lookup)
+				return lookup;
+			else
+				return computed;
 		}
 	}
 
@@ -7138,32 +7209,11 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		return { x:$.width*rx, y:0, z:$.zboundary[0]+$.height*rz};
 	}
 
-	if( Fsupport.css3dtransform)
+	background.prototype.scroll=function(X)
 	{
-		background.prototype.scroll=function(X)
-		{
-			var $=this;
-			for( var i=0; i<$.layers.length; i++)
-				$.layers[i].div.style[Fsupport.css3dtransform]= 'translate3d('+-Math.floor(X*$.layers[i].ratio)+'px,0px,0px) ';
-		}
-	}
-	else if( Fsupport.css2dtransform)
-	{
-		background.prototype.scroll=function(X)
-		{
-			var $=this;
-			for( var i=0; i<$.layers.length; i++)
-				$.layers[i].div.style[Fsupport.css2dtransform]= 'translate('+-Math.floor(X*$.layers[i].ratio)+'px,0px) ';
-		}
-	}
-	else
-	{
-		background.prototype.scroll=function(X)
-		{
-			var $=this;
-			for( var i=0; i<$.layers.length; i++)
-				$.layers[i].div.style.left=-Math.floor(X)*$.layers[i].ratio+'px';
-		}
+		var $=this;
+		for( var i=0; i<$.layers.length; i++)
+			$.layers[i].sp.set_x_y(-(X*$.layers[i].ratio),0);
 	}
 
 	var screenW=GA.window.width,
@@ -7171,39 +7221,63 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 	background.prototype.TU=function()
 	{
 		var $=this;
-		if( $.camera_locked)
-			return;
-		if( $.cami++%($.dropframe+1)!==0)
-			return;
-		/// algorithm by Azriel
-		/// http://www.lf-empire.de/forum/archive/index.php/thread-4597.html
-		var avgX=0,
-			facing=0,
-			numPlayers=0;
-		for( var i in $.char)
+		//camera movement
+		if( !$.camera_locked)
 		{
-			avgX+= $.char[i].ps.x;
-			facing+= $.char[i].dirh();
-			numPlayers++;
+			if( !$.carousel)
+			{	//camera chase
+				if( $.cami++%($.dropframe+1)!==0)
+					return;
+				/// algorithm by Azriel
+				/// http://www.lf-empire.de/forum/archive/index.php/thread-4597.html
+				var avgX=0,
+					facing=0,
+					numPlayers=0;
+				for( var i in $.char)
+				{
+					avgX+= $.char[i].ps.x;
+					facing+= $.char[i].dirh();
+					numPlayers++;
+				}
+				if( numPlayers>0)
+					avgX/=numPlayers;
+				//var xLimit= (facing*screenW)/(numPlayers*6) - (halfW + avgX);
+				//  his original equation has one error, it should be 24 regardless of number of players
+				var xLimit= (facing*screenW/24)+(avgX-halfW);
+				if( xLimit < 0) xLimit=0;
+				if( xLimit > $.width-screenW) xLimit = $.width-screenW;
+				var spdX = (xLimit - $.camerax) * GA.camera.speed_factor * ($.dropframe+1);
+				if( spdX!==0)
+				{
+					if( -0.05<spdX && spdX<0.05)
+						$.camerax = xLimit;
+					else
+						$.camerax = $.camerax + spdX;
+					$.scroll($.camerax);
+					if( $.scrollbar)
+						$.scrollbar.scrollLeft = Math.round($.camerax);
+				}
+			}
+			else if( $.carousel.type==='linear')
+			{
+				var lastscroll = $.scrollbar.scrollLeft;
+				$.scrollbar.scrollLeft += $.width/200*$.carousel.speed*$.carousel.dir;
+				if( lastscroll === $.scrollbar.scrollLeft)
+					$.carousel.dir *= -1;
+				$.scroll($.scrollbar.scrollLeft);
+			}
 		}
-		if( numPlayers>0)
-			avgX/=numPlayers;
-		//var xLimit= (facing*screenW)/(numPlayers*6) - (halfW + avgX);
-		//  his original equation has one error, it should be 24 regardless of number of players
-		var xLimit= (facing*screenW/24)+(avgX-halfW);
-		if( xLimit < 0) xLimit=0;
-		if( xLimit > $.width-screenW) xLimit = $.width-screenW;
-		var spdX = (xLimit - $.camerax) * GA.camera.speed_factor * ($.dropframe+1);
-		if( spdX!==0)
+		//layers animation
+		for( var i=0; i<$.timed_layers.length; i++)
 		{
-			if( -0.05<spdX && spdX<0.05)
-				$.camerax = xLimit;
+			var lay = $.timed_layers[i];
+			var frame = $.timer%lay.cc;
+			if( frame>=lay.c1 && frame<=lay.c2)
+				lay.sp.show();
 			else
-				$.camerax = $.camerax + spdX;
-			$.scroll($.camerax);
-			if( $.scrollbar)
-				$.scrollbar.scrollLeft = Math.round($.camerax);
+				lay.sp.hide();
 		}
+		$.timer++;
 	}
 
 	return background;
@@ -7340,30 +7414,7 @@ Global)
 		if( !$.config)
 			$.config = {};
 		$.time;
-
-		//UI
-		if( util.div('pauseMessage'))
-		{
-			$.pause_mess = new Fsprite({
-				inplace_div: util.div('pauseMessage'),
-				img: $.data.UI.pause
-			});
-			$.pause_mess.hide();
-		}
-		if( util.div('panel'))
-		{
-			$.panel=[];
-			for( var i=0; i<8; i++)
-			{
-				var pane = new Fsprite({
-					canvas: util.div('panel'),
-					img: $.data.UI.panel.pic,
-					wh: 'fit'
-				});
-				pane.set_x_y(GA.panel.pane.width*(i%4), GA.panel.pane.height*Math.floor(i/4));
-				$.panel.push(pane);
-			}
-		}
+		$.setup_UI();
 	}
 
 	match.prototype.create=function(setting)
@@ -7443,6 +7494,34 @@ Global)
 		console.log(this.time.t+': '+mes);
 	}
 
+	match.prototype.setup_UI=function()
+	{
+		var $=this;
+		if( util.div('pauseMessage'))
+		{
+			$.pause_mess = new Fsprite({
+				div: util.div('pauseMessage'),
+				img: $.data.UI.pause,
+				wh: 'fit'
+			});
+			$.pause_mess.hide();
+		}
+		if( util.div('panel'))
+		{
+			$.panel=[];
+			for( var i=0; i<8; i++)
+			{
+				var pane = new Fsprite({
+					canvas: util.div('panel'),
+					img: $.data.UI.panel.pic,
+					wh: 'fit'
+				});
+				pane.set_x_y($.data.UI.panel.pane_width*(i%4), $.data.UI.panel.pane_height*Math.floor(i/4));
+				$.panel.push(pane);
+			}
+		}
+	}
+
 	match.prototype.create_object=function(opoint, parent)
 	{
 		var $=this;
@@ -7486,7 +7565,7 @@ Global)
 			$fps: util.div('fps')
 		};
 		if( !$.time.$fps) $.calculate_fps = function(){};
-		$.time.timer = setInterval( function(){$.frame();}, 1000/30.5);
+		$.time.timer = setInterval( function(){$.frame();}, 1000/30);
 	}
 
 	match.prototype.frame=function()
@@ -7912,13 +7991,178 @@ function keychanger (append_at, controllers)
 return keychanger;
 });
 
-define('LF/demo/buildinfo.js',{ timestamp: "unbuilt" })
-;
+/*\
+ * touchcontroller
+ * 
+ * touch controller for LF2
+\*/
+define('LF/touchcontroller',['LF/util'],function(util)
+{
+	var controllers=[];
+	var touches=[];
+	var locked=false;
+	function touch_fun(event)
+	{
+		touches = event.touches;
+		if( locked)
+			event.preventDefault();
+	}
+	setTimeout(function()
+	{
+		locked=true;
+	},5000);
+	document.addEventListener('touchstart', touch_fun, false);
+	document.addEventListener('touchmove', touch_fun, false);
+	document.addEventListener('touchenter', touch_fun, false);
+	document.addEventListener('touchend', touch_fun, false);
+	document.addEventListener('touchleave', touch_fun, false);
+	document.addEventListener('touchcancel', touch_fun, false);
+	window.addEventListener('resize', function()
+	{
+		for( var i=0; i<controllers.length; i++)
+			controllers[i].resize();
+	}, false);
+
+	function TC()
+	{
+		var $=this;
+		$.state={ up:0,down:0,left:0,right:0,def:0,jump:0,att:0 };
+		$.button={
+			up:{label:'&uarr;'},down:{label:'&darr;'},left:{label:'&larr;'},right:{label:'&rarr;'},
+			def:{label:'D'},jump:{label:'J'},att:{label:'A'}
+		};
+		$.config=null;
+		$.child=[];
+		$.sync=true; //only sync===true is supported
+		controllers.push(this);
+		for( var key in $.button)
+		{
+			var el = document.createElement('div');
+			document.getElementsByClassName('LFtouchControlHolder')[0].appendChild(el);
+			el.className = 'touchControllerButton';
+			el.innerHTML= '<span>'+$.button[key].label+'</span>';
+			$.button[key].el = el;
+		}
+		$.resize();
+	}
+	TC.prototype.resize=function()
+	{
+		var $=this;
+		var w = window.innerWidth,
+			h = window.innerHeight;
+		var sizeA = 0.3,
+			sizeB = 0.25,
+			padL = 0.1,
+			padR = 0.2,
+			R = 0.75;
+		if( h>w)
+			h=w/16*9;
+		sizeA = sizeA*h;
+		sizeB = sizeB*h;
+		$.button['up'].left = sizeA*padL;
+		$.button['up'].top = h/2-sizeA;
+		$.button['up'].right = $.button['up'].left+sizeA*2;
+		$.button['up'].bottom = $.button['up'].top+sizeA*R;
+		$.button['down'].left = sizeA*padL;
+		$.button['down'].top = h/2+sizeA*(1-R);
+		$.button['down'].right = $.button['down'].left+sizeA*2;
+		$.button['down'].bottom = $.button['down'].top+sizeA*R;
+		$.button['left'].left = sizeA*padL;
+		$.button['left'].top = h/2-sizeA;
+		$.button['left'].right = $.button['left'].left+sizeA*R;
+		$.button['left'].bottom = $.button['left'].top+sizeA*2;
+		$.button['right'].left = sizeA*(2-R+padL);
+		$.button['right'].top = h/2-sizeA;
+		$.button['right'].right = $.button['right'].left+sizeA*R;
+		$.button['right'].bottom = $.button['right'].top+sizeA*2;
+		$.button['def'].left = w-sizeB*(1.5+padR);
+		$.button['def'].top = h/2;
+		$.button['def'].right = $.button['def'].left+sizeB;
+		$.button['def'].bottom = $.button['def'].top+sizeB;
+		$.button['jump'].left = w-sizeB*(2+padR);
+		$.button['jump'].top = h/2-sizeB;
+		$.button['jump'].right = $.button['jump'].left+sizeB;
+		$.button['jump'].bottom = $.button['jump'].top+sizeB;
+		$.button['att'].left = w-sizeB*(1+padR);
+		$.button['att'].top = h/2-sizeB;
+		$.button['att'].right = $.button['att'].left+sizeB;
+		$.button['att'].bottom = $.button['att'].top+sizeB;
+		set_xy_wh($.button['up']);
+		set_xy_wh($.button['down']);
+		set_xy_wh($.button['left']);
+		set_xy_wh($.button['right']);
+		set_xy_wh($.button['def']);
+		set_xy_wh($.button['jump']);
+		set_xy_wh($.button['att']);
+	}
+	function set_xy_wh(B)
+	{
+		B.el.style.left = B.left+'px';
+		B.el.style.top = B.top+'px';
+		B.el.style.width = (B.right-B.left)+'px';
+		B.el.style.height = (B.bottom-B.top)+'px';
+	}
+	function inbetween(x,L,R)
+	{
+		var l,r;
+		if ( L<=R)
+		{	l=L;
+			r=R;
+		}
+		else
+		{	l=R;
+			r=L;
+		}
+		return x>=l && x<=r;
+	}
+	function point_in_rect(Px,Py,R)
+	{
+		return (inbetween(Px,R.left,R.right) && inbetween(Py,R.top,R.bottom));
+	}
+	TC.prototype.clear_states=function()
+	{
+		for(var I in this.state)
+			this.state[I]=0;
+	}
+	TC.prototype.fetch=function()
+	{
+		var $=this;
+		for( var key in $.button)
+		{
+			var down=false;
+			for (i=0; i<touches.length; i++)
+			{
+				var T=touches[i];
+				if( point_in_rect(T.clientX,T.clientY,$.button[key]))
+				{
+					down=true;
+					break;
+				}
+			}
+			if (down && !$.state[key])
+			{
+				for( var i=0; i<$.child.length; i++)
+					$.child[i].key(key,1);
+				$.state[key]=1;
+			}
+			else if (!down && $.state[key])
+			{
+				//key up event omitted because combodec does not need
+				$.state[key]=0;
+			}
+		}
+	}
+	TC.prototype.flush=function()
+	{
+	}
+
+	return TC;
+});
 define('F.core/css!LF/application.css', ['F.core/css-embed'], 
 function(embed)
 {
 	embed(
-	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .LFwindow {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .LFviewerContainer .LFwindow {  height:400px; } .LFwindowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .LFwindowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .LFwindowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .LFwindowCaptionButton, .LFProjectFbutton {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .LFwindowCaptionButton:hover {  background:#248ce5; } .LFProjectFbutton {  background:#7c547c; } .LFProjectFbutton:hover {  background:#9d6e9d; } .LFkeychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:10000;  font-size:12px;  padding:10px; } .LFpanel {  position:absolute;  left:0; top:0;  width:100%; height:128px;  background:#324d9a;  z-index:2; } .LFbackground {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .LFviewerContainer .LFbackground {  top:-128px; } .LFbackgroundLayer {  position:absolute;  left:0; top:0; } .LFfloorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .LFviewerContainer .LFfloorHolder {  top:-128px; } .LFfloor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .LFtopStatus, .LFbottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .LFfps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .LFfootnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .LFbackgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .LFbackgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .LFviewerContainer .LFbackgroundScroll {  top:400px;  z-index:10; } .LFwindowMessageHolder {  /*http://www.brunildo.org/test/img_center.html*/  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:100; } .LFwindowMessage {     display: table-cell;     text-align: center;     vertical-align: middle;  position:absolute;  left:0; top:0;  width:100%; height:100%; } .LFwindowMessage * {     vertical-align: middle; } .LFwindowMessage {     display: block; } .LFwindowMessage span {     display: inline-block;     height: 100%;     width: 1px; } .LFerrorMessage {  position:absolute;  left:0; top:128px;  color: #F00; } '
+	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:10;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:1000;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus, .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; }'
 	);
 	return true;
 });
@@ -7935,21 +8179,19 @@ requirejs.config(
 });
 
 requirejs(['F.core/controller','F.core/sprite','F.core/support',
-'LF/loader!packages','LF/match','LF/keychanger',
-'LF/util','./buildinfo.js','F.core/css!LF/application.css'],
+'LF/loader!packages','LF/match','LF/keychanger','LF/touchcontroller',
+'LF/util','LF/global','F.core/css!LF/application.css'],
 function(Fcontroller,Fsprite,Fsupport,
-package,Match,Keychanger,
-util,buildinfo){
+package,Match,Keychanger,touchcontroller,
+util,global){
 
 	//feature check
 	if( !Fsupport.css2dtransform && !Fsupport.css3dtransform)
 	{
-		var mess = document.createElement('div');
+		var mess = util.div('errorMessage');
 		mess.innerHTML=
 			'Sorry, your browser does not support CSS transform.<br>'+
 			'Please update to a latest HTML5 browser.';
-		mess.className = 'LFerrorMessage';
-		util.div('windowMessageHolder').appendChild(mess);
 		return;
 	}
 
@@ -7967,61 +8209,107 @@ util,buildinfo){
 	//
 	// UI window
 	//
-	var maximized=undefined;
+	var UI_state=
+	{
+		maximized:undefined,
+		wide:false
+	};
 	function resizer(ratio)
 	{
-		if( maximized)
+		if( UI_state.maximized)
 		{
 			if( typeof ratio!=='number')
 			{
-				ratio = window.innerHeight/parseInt(window.getComputedStyle(util.container,null).getPropertyValue('height'));
+				var ratioh = window.innerHeight/parseInt(window.getComputedStyle(util.container,null).getPropertyValue('height')),
+					ratiow = window.innerWidth/parseInt(window.getComputedStyle(util.container,null).getPropertyValue('width'));
+				ratio = ratioh<ratiow? ratioh:ratiow;
 				ratio = Math.floor(ratio*100)/100;
 			}
 			util.container.style[Fsupport.css2dtransform+'Origin']= '0 0';
 			util.container.style[Fsupport.css2dtransform]= 'scale('+ratio+','+ratio+') ';
 		}
 	}
-	if( window.location.href.match(/embed/))
-		util.div('maximizeButton').onclick=function()
+	util.div('maximizeButton').onclick=function()
+	{
+		if( Fsupport.css2dtransform)
 		{
-			var link=document.createElement('a');
-			link.href = 'demo4.html?max';
-			link.target='_blank';
-			link.style.display='none';
-			var body = document.getElementsByTagName('body')[0];
-			body.appendChild(link);
-			link.click();
-		}
-	else
-		util.div('maximizeButton').onclick=function()
-		{
-			if( Fsupport.css2dtransform)
+			if( !UI_state.maximized)
 			{
-				if( !maximized)
-				{
-					if( maximized===undefined)
-						window.addEventListener('resize', resizer, false);
-					maximized=true;
-					util.div('maximizeButton').firstChild.innerHTML='&#9724;';
-					if( util.div('backgroundScroll'))
-						util.div('backgroundScroll').style.display='none';
-					resizer();
-				}
-				else
-				{
-					util.div('maximizeButton').firstChild.innerHTML='&#9723;';
-					if( util.div('backgroundScroll'))
-						util.div('backgroundScroll').style.display='';
-					resizer(1);
-					maximized=false;
-				}
+				if( UI_state.maximized===undefined)
+					window.addEventListener('resize', resizer, false);
+				UI_state.maximized=true;
+				this.firstChild.innerHTML='&#9724;';
+				if( util.div('backgroundScroll'))
+					util.div('backgroundScroll').style.display='none';
+				document.body.style.background='#888';
+				resizer();
+			}
+			else
+			{
+				this.firstChild.innerHTML='&#9723;';
+				if( util.div('backgroundScroll'))
+					util.div('backgroundScroll').style.display='';
+				document.body.style.background='';
+				resizer(1);
+				UI_state.maximized=false;
 			}
 		}
-	if( window.location.href.match(/max/))
-		util.div('maximizeButton').onclick();
+	}
+	util.div('wideWindowButton').style.display='none';
+	util.div('wideWindowButton').onclick=function()
+	{
+		if( !UI_state.wide)
+		{
+			UI_state.wide=true;
+			util.div().classList.add('wideWindow');
+			this.firstChild.innerHTML='&#8622;';
+		}
+		else
+		{
+			UI_state.wide=false;
+			util.div().classList.remove('wideWindow');
+			this.firstChild.innerHTML='&#8596;';
+		}
+		resizer();
+	}
 
-	util.div('footnote').innerHTML+='; '+
-		(buildinfo.timestamp==='unbuilt'?'unbuilt demo':'built on: '+buildinfo.timestamp);
+	//process parameters
+	var param = util.location_parameters();
+	if( param)
+	for( var i=0; i<param.length; i++)
+	{
+		switch(param[i][0])
+		{
+			case 'embed':
+				util.div('maximizeButton').onclick=function()
+				{
+					var link=document.createElement('a');
+					link.href = 'demo4.html?max';
+					link.target='_blank';
+					link.style.display='none';
+					var body = document.getElementsByTagName('body')[0];
+					body.appendChild(link);
+					link.click();
+				}
+			break;
+			case 'max':
+				util.div('maximizeButton').onclick();
+			break;
+		}
+	}
+
+	if( window.innerWidth<global.application.window.width ||
+		window.innerHeight<global.application.window.height )
+	{
+		util.div('maximizeButton').onclick();
+		if( window.innerWidth/window.innerHeight > 5/3)
+			util.div('wideWindowButton').onclick();
+	}
+
+	requirejs(['./buildinfo.js'],function(buildinfo){
+		util.div('footnote').innerHTML+=
+			(buildinfo.timestamp==='unbuilt'?'unbuilt demo':'built on: '+buildinfo.timestamp);
+	});
 
 	//
 	// save settings
@@ -8050,18 +8338,25 @@ util,buildinfo){
 		if( Fsupport.localStorage.getItem('F.LF/settings'))
 		{
 			var obj = JSON.parse(Fsupport.localStorage.getItem('F.LF/settings'));
-			control_con1 = obj.controller[0];
-			control_con2 = obj.controller[1];
+			if( obj.controller[0])
+				control_con1 = obj.controller[0];
+			if( obj.controller[1])
+				control_con2 = obj.controller[1];
 		}
 	}
 
 	//
 	// F.LF stuff
 	//
+	var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
 	util.setup_resourcemap(package,Fsprite);
 
 	var control1 = new Fcontroller(control_con1);
-	var control2 = new Fcontroller(control_con2);
+	var control2;
+	if( !support_touch)
+		control2 = new Fcontroller(control_con2);
+	else
+		control2 = new touchcontroller();
 	control1.sync=true;
 	control2.sync=true;
 
@@ -8088,7 +8383,7 @@ util,buildinfo){
 		[
 			{
 				controller: control1,
-				id: 30,
+				id: 11,
 				team: 1
 			},
 			{

@@ -53,9 +53,12 @@ ID[150]= //stone
 
 // specialattack	id from 200~299
 
-ID[203]=
+ID[203]= //deep_ball
 {
-	mass: 0
+};
+
+ID[207]= //davis_ball
+{
 };
 
 // effects			id from 300~349 (extended standard)

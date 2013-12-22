@@ -1,0 +1,17 @@
+//extended standard
+define({
+	panel:
+	{
+		pic:'UI/panel.png',
+		x: 5, y: 6,
+		hpx: 57, hpy: 16, hpw: 125, hph: 10,
+		mpx: 57, mpy: 36, mpw: 125, mph: 10,
+		hp_bright: '#FF0000',
+		hp_dark: '#6f081f',
+		mp_bright: '#0000FF',
+		mp_dark: '#1f086f',
+		pane_width:198,
+		pane_height:53
+	},
+	pause:'UI/pause.png'
+});
