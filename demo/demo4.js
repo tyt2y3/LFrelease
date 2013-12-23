@@ -1989,8 +1989,8 @@ GC.weapon.bounceup={}; //when a weapon falls onto ground
 GC.weapon.bounceup.limit= 8; //defined limit to bounce up again
 GC.weapon.bounceup.speed={};
 GC.weapon.bounceup.speed.y= -3.7; //defined bounce up speed
-GC.weapon.bounceup.speed.x= 6;
-GC.weapon.bounceup.speed.z= 3;
+GC.weapon.bounceup.speed.x= 3;
+GC.weapon.bounceup.speed.z= 1.5;
 GC.weapon.soft_bounceup={}; //when heavy weapon being hit by character punch
 GC.weapon.soft_bounceup.speed={};
 GC.weapon.soft_bounceup.speed.y= -2;
@@ -1999,10 +1999,8 @@ GC.weapon.hit={}; //when a weapon hit others
 GC.weapon.hit.vx= -3; //absolute speed
 GC.weapon.hit.vy= 0;
 
-GC.weapon.gain={}; //when a weapon is being hit at rest
-GC.weapon.gain.factor={}; //gain factor
-GC.weapon.gain.factor.x= 1.1;
-GC.weapon.gain.factor.y= 1.8;
+//GC.weapon.gain.factor.x= 1.1; //when a weapon is being hit at rest
+//GC.weapon.gain.factor.y= 1.8;
 
 GC.weapon.reverse={}; //when a weapon is being hit while travelling in air
 GC.weapon.reverse.factor={};
@@ -3163,11 +3161,6 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		};
 		$.catching= 0; //state 9: the object being caught by me now
 					//OR state 10: the object catching me now
-		$.hold=
-		{
-			obj: null, //something that I can hold or can hold me
-			id: 0 //id of holding
-		};
 		$.allow_switch_dir=true; //direction switcher
 	}
 	livingobject.prototype.type='livingobject';
@@ -3218,12 +3211,11 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		if( $.frame.D.dvx)
 		{
 			var avx = $.ps.vx>0?$.ps.vx:-$.ps.vx;
-			var dirx = $.ps.vx===0? $.dirh() : ($.ps.vx>0?1:-1);
 			if( $.ps.y<0 || avx < $.frame.D.dvx) //accelerate..
-				$.ps.vx = dirx * $.frame.D.dvx; //..is okay
+				$.ps.vx = $.dirh() * $.frame.D.dvx; //..is okay
 			//decelerate must be gradual
 			if( $.frame.D.dvx<0)
-				$.ps.vx = $.ps.vx - dirx;
+				$.ps.vx = $.ps.vx - $.dirh();
 		}
 		if( $.frame.D.dvz) $.ps.vz = $.dirv() * $.frame.D.dvz;
 		if( $.frame.D.dvy) $.ps.vy += $.frame.D.dvy;
@@ -3234,7 +3226,8 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	{
 		var $=this;
 
-		$.frame_force();
+		if( !$.state_update('TU_force'))
+			$.frame_force();
 
 		//effect
 		if( $.effect.timein<0)
@@ -3481,8 +3474,7 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	{
 		var $=this;
 		//console.log('vrest['+uid+'] of '+$.id+' is '+$.itr.vrest[uid]);
-		if( !$.itr.vrest[uid])
-			return true;
+		return !$.itr.vrest[uid];
 	}
 
 	livingobject.prototype.switch_dir = function(e)
@@ -4016,7 +4008,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					var tag = Global.combo_tag[K];
 					if( tag && $.frame.D[tag])
 					{
-						if( !$.id_update('combo',K,tag))
+						if( !$.id_update('generic_combo',K,tag))
 						{
 							$.trans.frame($.frame.D[tag], 11);
 							return 1;
@@ -4109,17 +4101,17 @@ function(livingobject, Global, Fcombodec, Futil, util)
 							$.trans.frame(50, 10); //throw heavy weapon
 							return 1;
 						}
-						else if( $.proper($.hold.id,'just_throw'))
+						else if( $.proper($.hold.obj.id,'just_throw'))
 						{
 							$.trans.frame(45, 10); //throw light weapon
 							return 1;
 						}
-						else if ( dx && $.proper($.hold.id,'stand_throw'))
+						else if ( dx && $.proper($.hold.obj.id,'stand_throw'))
 						{
 							$.trans.frame(45, 10); //throw weapon
 							return 1;
 						}
-						else if( $.proper($.hold.id,'attackable')) //light weapon attack
+						else if( $.proper($.hold.obj.id,'attackable')) //light weapon attack
 						{
 							$.trans.frame($.match.random()<0.5? 20:25, 10);
 							return 1;
@@ -4280,12 +4272,12 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						else
 						{
 							var dx = $.con.state.left !== $.con.state.right;
-							if( dx && $.proper($.hold.id,'run_throw'))
+							if( dx && $.proper($.hold.obj.id,'run_throw'))
 							{
 								$.trans.frame(45, 10); //throw light weapon
 								return 1;
 							}
-							else if( $.proper($.hold.id,'attackable'))
+							else if( $.proper($.hold.obj.id,'attackable'))
 							{
 								$.trans.frame(35, 10); //light weapon attack
 								return 1;
@@ -4307,6 +4299,10 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 				$.id_update('state3_frame');
 			break;
+			case 'hit_stop':
+			return $.id_update('state3_hit_stop');
+			case 'frame_force':
+			return $.id_update('state3_frame_force');
 		}},
 
 		'4':function(event,K) //jump
@@ -4345,9 +4341,9 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						if( $.hold.obj)
 						{
 							var dx = $.con.state.left !== $.con.state.right;
-							if( dx && $.proper($.hold.id,'jump_throw'))
+							if( dx && $.proper($.hold.obj.id,'jump_throw'))
 								$.trans.frame(52, 10); //sky light weapon throw
-							else if( $.proper($.hold.id,'attackable'))
+							else if( $.proper($.hold.obj.id,'attackable'))
 								$.trans.frame(30, 10); //light weapon attack
 						}
 						else
@@ -4374,7 +4370,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					if( $.proper('dash_backattack') || //back attack
 						$.dirh()===($.ps.vx>0?1:-1)) //if not turning back
 					{
-						if( $.hold.obj && $.proper($.hold.id,'attackable')) //light weapon attack
+						if( $.hold.obj && $.proper($.hold.obj.id,'attackable')) //light weapon attack
 							$.trans.frame(40, 10);
 						else
 							$.trans.frame(90, 10);
@@ -4440,12 +4436,20 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		'8':function(event,K) //broken defend
 		{	var $=this;
 			switch (event) {
-			case 'frame':
-				switch ($.frame.N)
+			case 'frame_force':
+			case 'TU_force':
+				//nasty fix: to compensate that frame_force is applied with respecting to facing direction
+				if( $.frame.D.dvx)
 				{
-					case 114:
-						$.ps.fric=0;
-					break;
+					if( ($.ps.vx>0?1:-1) !== $.dirh())
+					{
+						var avx = $.ps.vx>0?$.ps.vx:-$.ps.vx;
+						var dirx = 2*($.ps.vx>0?1:-1);
+						if( $.ps.y<0 || avx < $.frame.D.dvx)
+							$.ps.vx = dirx * $.frame.D.dvx;
+						if( $.frame.D.dvx<0)
+							$.ps.vx = $.ps.vx - dirx;
+					}
 				}
 			break;
 		}},
@@ -4873,7 +4877,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		}}
 	};
 
-	var idupdates =
+	var idupdates = //nasty fix (es)
 	{
 		'default':function()
 		{
@@ -4895,13 +4899,41 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				if( $.frame.PN>=267 && $.frame.PN<=272)
 					$.trans.inc_wait(-1);
 			break;
-			case 'combo':
+			case 'generic_combo':
 				if( tag==='hit_Fj')
 				{
 					if( K==='D>J' || K==='D>AJ')
 						$.switch_dir('right');
 					else
 						$.switch_dir('left');
+				}
+			break;
+			}
+		},
+		'11': function(event) //davis
+		{
+			var $=this;
+			switch (event)
+			{
+			case 'state3_hit_stop':
+				switch ($.frame.N)
+				{
+					//to fix many_punch
+					case 271: case 276: case 280:
+						$.effect_stuck(1,2); //not stuck immediately but next frame (timein=1)
+						$.trans.inc_wait(1);
+					return 1;
+					case 273:
+						$.effect_stuck(0,2);
+					return 1;
+				}
+			break;
+			case 'state3_frame_force':
+				switch ($.frame.N)
+				{
+					//to fix many_punch
+					case 275: case 278: case 279:
+						return 1; //disable pre update of force
 				}
 			break;
 			}
@@ -4979,6 +5011,11 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			];
 			$.combodec = new Fcombodec($.con, dec_con, combo_list.concat(Global.combo_list));
 		}
+		$.hold=
+		{
+			obj: null, //holding weapon
+			id: 0 //id of holding
+		};
 		$.health.bdefend=0;
 		$.health.fall=0;
 		$.health.hp=$.health.hp_full=$.health.hp_bound= $.proper('hp') || GC.default.health.hp_full;
@@ -5215,8 +5252,10 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				if( !$.con.state.att)
 					break; //only if att key is down
 			case 2: //pick weapon
+				if( !$.hold.obj)
 				for( var t in hit)
 				{
+					if(!(ITR.kind===7 && hit[t].type==='heavyweapon')) //kind 7 cannot pick up heavy weapon
 					if( hit[t].type==='lightweapon' || hit[t].type==='heavyweapon')
 					if( hit[t].pick($))
 					{
@@ -5229,7 +5268,6 @@ function(livingobject, Global, Fcombodec, Futil, util)
 								$.trans.frame(116, 10);
 						}
 						$.hold.obj = hit[t];
-						$.hold.id= $.hold.obj.id;
 						break;
 					}
 				}
@@ -5303,17 +5341,23 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		if( $.hold.obj)
 		if( $.frame.D.wpoint)
 		{
-			var act = $.hold.obj.act($, $.frame.D.wpoint, $.mech.make_point($.frame.D.wpoint));
-			if( act.thrown)
+			if( $.frame.D.wpoint.kind===1)
 			{
-				$.hold.obj=null;
-				$.hold.id=0;
+				var act = $.hold.obj.act($, $.frame.D.wpoint, $.mech.make_point($.frame.D.wpoint));
+				if( act.thrown)
+				{
+					$.hold.obj=null;
+				}
+				if( act.hit!==null && act.hit!==undefined)
+				{
+					$.itr_rest_update( act.hit, act);
+					//stalls
+					$.trans.inc_wait(GC.default.itr.hit_stop, 10);
+				}
 			}
-			if( act.hit!==null && act.hit!==undefined)
+			else if( $.frame.D.wpoint.kind===3)
 			{
-				$.itr_rest_update( act.hit, act);
-				//stalls
-				$.trans.inc_wait(GC.default.itr.hit_stop, 10);
+				$.drop_weapon();
 			}
 		}
 	}
@@ -5334,7 +5378,6 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		{
 			$.hold.obj.drop(dvx,dvy);
 			$.hold.obj=null;
-			$.hold.id=0;
 		}
 	}
 
@@ -5535,6 +5578,10 @@ function weapon(type)
 			$.sp.ani[i].config.borderright=2;
 			$.sp.ani[i].config.borderbottom=2;
 		}
+		$.hold=
+		{
+			obj: null //character who hold me
+		};
 		$.setup();
 	}
 	typeweapon.prototype = new livingobject();
@@ -5620,6 +5667,7 @@ function weapon(type)
 					$.ps.vx *= GC.weapon.reverse.factor.vx;
 				$.ps.vy *= GC.weapon.reverse.factor.vy;
 				$.ps.vz *= GC.weapon.reverse.factor.vz;
+				$.team = att.team; //change to the attacker's team
 			}
 			else if( $.cur_state()===1004) //on_ground
 			{
@@ -5638,26 +5686,22 @@ function weapon(type)
 		var fall= ITR.fall!==undefined? ITR.fall: GC.default.fall.value;
 		if( $.heavy)
 		{
-			if( $.cur_state()===2004)
+			if( $.cur_state()===2004) //on_ground
 			{
 				accept=true;
-				if( att.type==='character')
-				{
-					if( fall<GC.fall.KO)
-						$.ps.vy= GC.weapon.soft_bounceup.speed.y;
-					else
-					{
-						$.ps.vy = GC.weapon.bounceup.speed.y;
-					}
-				}
+				if( fall<30)
+					$.effect_create(0, GC.effect.duration);
+				else if( fall<GC.fall.KO)
+					$.ps.vy= GC.weapon.soft_bounceup.speed.y;
 				else
 				{
-					var asp = att.mech.speed();
-					$.ps.vx= asp* GC.weapon.gain.factor.x * (att.ps.vx>0?1:-1);
-					$.ps.vy= asp* GC.weapon.gain.factor.y;
+					$.ps.vy= GC.weapon.bounceup.speed.y;
+					if( att.ps.vx) $.ps.vx= (att.ps.vx>0?1:-1)*GC.weapon.bounceup.speed.x;
+					if( att.ps.vz) $.ps.vz= (att.ps.vz>0?1:-1)*GC.weapon.bounceup.speed.z;
+					$.trans.frame(999);
 				}
 			}
-			else if( $.cur_state()===2000)
+			else if( $.cur_state()===2000) //in_the_sky
 			{
 				if( fall>=GC.fall.KO)
 				{
@@ -5666,14 +5710,12 @@ function weapon(type)
 						$.ps.vx *= GC.weapon.reverse.factor.vx;
 					$.ps.vy *= GC.weapon.reverse.factor.vy;
 					$.ps.vz *= GC.weapon.reverse.factor.vz;
+					$.team = att.team; //change to the attacker's team
 				}
 			}
 		}
 		if( accept)
-		{
-			$.team = att.team; //change to the attacker's team
 			$.visualeffect_create( 0, rect, (attps.x < $.ps.x), (fall<GC.fall.KO?1:2));
-		}
 		return accept;
 	}
 
@@ -5825,17 +5867,18 @@ function weapon(type)
 
 	typeweapon.prototype.vol_itr=function(kind)
 	{
+		function match_kind(obj)
+		{
+			return obj.kind==kind; //use type conversion comparison
+		}
 		var $=this;
 		if( $.frame.D.itr)
 			return $.mech.body(
 				$.frame.D.itr, //make volume from itr
-				function (obj) //filter
-				{
-					return obj.kind==kind; //use type conversion comparison
-				}
+				match_kind //select only matched kind
 			);
 		else
-			return [];
+			return $.mech.body_empty();
 	}
 
 	return typeweapon;
@@ -5879,11 +5922,24 @@ var GC=Global.gameplay;
 				if( $.frame.D.opoint)
 					$.match.create_object($.frame.D.opoint, $);
 			break;
+
+			case 'frame_force':
+			case 'TU_force':
+				if( $.frame.D.hit_j)
+				{
+					var dvz = $.frame.D.hit_j - 50;
+					$.ps.vz = dvz;
+				}
+			break;
 		}},
 
 		/*	State 300X - Ball States
 			descriptions taken from
 			http://lf-empire.de/lf2-empire/data-changing/reference-pages/182-states?showall=&start=29
+		*/
+		/*	<zort> chasing ball seeks for 72 frames, not counting just after (quantify?) it's launched or deflected. Internally, LF2 keeps a variable keeping track of how long the ball has left to seek, which starts at 500 and decreases by 7 every frame until it reaches 0. while seeking, its maximum x speed is 14, and its x acceleration is 0.7; it can climb or descend, by 1 px/frame; and its maximum z speed is 2.2, with z acceleration .4. when out of seeking juice, its speed is 17. the -7 in the chasing algorithm comes from hit_a: 7.
+		*/
+		/*	<zort> you know that when you shoot a ball between john shields it eventually goes out the bottom? that's because when a projectile is spawned it's .3 pixels or whatever below its creator and whenever it bounces off a shield it respawns.
 		*/
 
 		//	State 3000 - Ball Flying is the standard state for attacks.  If the ball hits other attacks with this state, it'll go to the hitting frame (10). If it is hit by another ball or a character, it'll go to the the hit frame (20) or rebounding frame (30).
@@ -6859,24 +6915,28 @@ scene.prototype.query = function(volume, exclude, where)
 	var tag=where.tag;
 	if(!tag) tag='body';
 	var tagvalue=0;
-	var colon=tag.indexOf(':');
-	if( colon!==-1)
-	{
-		tagvalue = tag.slice(colon+1);
-		tag = tag.slice(0,colon);
-	}
-	exclude=Futil.make_array(exclude);
+	var tag_split=tag.split(':');
+	tag = tag_split[0];
+	tagvalue = tag_split[1];
 
 	for ( var i in this.live)
 	{
 		var excluded=false;
-		for( var ex in exclude)
+		if( exclude instanceof Array)
 		{
-			if( this.live[i] === exclude[ex])
+			for( var ex=0; ex<exclude.length; ex++)
 			{
-				excluded=true;
-				break;
+				if( this.live[i] === exclude[ex])
+				{
+					excluded=true;
+					break;
+				}
 			}
+		}
+		else if( exclude)
+		{
+			if( this.live[i] === exclude)
+				excluded=true;
 		}
 		if( excluded)
 			continue;
@@ -8054,37 +8114,41 @@ define('LF/touchcontroller',['LF/util'],function(util)
 			sizeB = 0.25,
 			padL = 0.1,
 			padR = 0.2,
+			offy = 0,
 			R = 0.75;
 		if( h>w)
-			h=w/16*9;
+		{
+			offy = h/2;
+			h = w/16*9;
+		}
 		sizeA = sizeA*h;
 		sizeB = sizeB*h;
 		$.button['up'].left = sizeA*padL;
-		$.button['up'].top = h/2-sizeA;
+		$.button['up'].top = h/2-sizeA+offy;
 		$.button['up'].right = $.button['up'].left+sizeA*2;
 		$.button['up'].bottom = $.button['up'].top+sizeA*R;
 		$.button['down'].left = sizeA*padL;
-		$.button['down'].top = h/2+sizeA*(1-R);
+		$.button['down'].top = h/2+sizeA*(1-R)+offy;
 		$.button['down'].right = $.button['down'].left+sizeA*2;
 		$.button['down'].bottom = $.button['down'].top+sizeA*R;
 		$.button['left'].left = sizeA*padL;
-		$.button['left'].top = h/2-sizeA;
+		$.button['left'].top = h/2-sizeA+offy;
 		$.button['left'].right = $.button['left'].left+sizeA*R;
 		$.button['left'].bottom = $.button['left'].top+sizeA*2;
 		$.button['right'].left = sizeA*(2-R+padL);
-		$.button['right'].top = h/2-sizeA;
+		$.button['right'].top = h/2-sizeA+offy;
 		$.button['right'].right = $.button['right'].left+sizeA*R;
 		$.button['right'].bottom = $.button['right'].top+sizeA*2;
 		$.button['def'].left = w-sizeB*(1.5+padR);
-		$.button['def'].top = h/2;
+		$.button['def'].top = h/2+offy;
 		$.button['def'].right = $.button['def'].left+sizeB;
 		$.button['def'].bottom = $.button['def'].top+sizeB;
 		$.button['jump'].left = w-sizeB*(2+padR);
-		$.button['jump'].top = h/2-sizeB;
+		$.button['jump'].top = h/2-sizeB+offy;
 		$.button['jump'].right = $.button['jump'].left+sizeB;
 		$.button['jump'].bottom = $.button['jump'].top+sizeB;
 		$.button['att'].left = w-sizeB*(1+padR);
-		$.button['att'].top = h/2-sizeB;
+		$.button['att'].top = h/2-sizeB+offy;
 		$.button['att'].right = $.button['att'].left+sizeB;
 		$.button['att'].bottom = $.button['att'].top+sizeB;
 		set_xy_wh($.button['up']);
@@ -8162,7 +8226,7 @@ define('F.core/css!LF/application.css', ['F.core/css-embed'],
 function(embed)
 {
 	embed(
-	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:10;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:1000;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus, .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; }'
+	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:10;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:1000;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus, .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; }'
 	);
 	return true;
 });
@@ -8184,6 +8248,15 @@ requirejs(['F.core/controller','F.core/sprite','F.core/support',
 function(Fcontroller,Fsprite,Fsupport,
 package,Match,Keychanger,touchcontroller,
 util,global){
+
+	if (typeof console === "undefined"){
+		console={};
+		console.log = function(){
+			return;
+		}
+	}
+
+	console.log(util.div('projectFmessage').innerHTML);
 
 	//feature check
 	if( !Fsupport.css2dtransform && !Fsupport.css3dtransform)
