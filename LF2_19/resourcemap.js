@@ -58,7 +58,7 @@ define({
 		'bg/cuhk/lamp2.png':'http://lh3.googleusercontent.com/-v5YXfqz_Gv4/UkLPS3clFII/AAAAAAAAAQA/f0PzZU2ZTTs/w82-h137-no/lamp2.png',
 		'bg/cuhk/grass2.png':'http://lh4.googleusercontent.com/-9reyLWxSMSY/UkLPRVEsUxI/AAAAAAAAAPg/AUaxFwwvxgs/w163-h54-no/grass2.png',
 		'bg/cuhk/grass.png':'http://lh5.googleusercontent.com/-pT0H5SRl8Tc/UkLPRORhBAI/AAAAAAAAAPc/lMi3f47IJos/w180-h128-no/grass.png',
-		'bg/cuhk/right.png':'http://lh3.googleusercontent.com/-XhOUV4xYvRE/UkLPTnq8iKI/AAAAAAAAAQU/LggQlqUzjsI/w141-h122-no/right.png'
+		'bg/cuhk/right.png':'http://lh3.googleusercontent.com/-XhOUV4xYvRE/UkLPTnq8iKI/AAAAAAAAAQU/LggQlqUzjsI/w141-h122-no/right.png',
 		
 		'bg/ft/c1.png':'https://lh5.googleusercontent.com/-Q8fLWterqj8/Ur8R6veZW-I/AAAAAAAAAT8/zakdICjmO6A/w54-h134-no/c1.png',
 		'bg/ft/c2.png':'https://lh4.googleusercontent.com/-TJpeHaY_Whs/Ur8R6qRM54I/AAAAAAAAAUc/gxl6XWShRjs/w60-h43-no/c2.png',
