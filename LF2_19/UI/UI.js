@@ -13,5 +13,27 @@ define({
 		pane_width:198,
 		pane_height:53
 	},
-	pause:'UI/pause.png'
+	pause:'UI/pause.png',
+	character_selection:
+	{
+		pic:'UI/character_selection.png',
+		posx:[
+			147,300,453,606
+		],
+		posy:[
+			93,213,234,256,
+			299,420,441,463
+		],
+		waiting:
+		{
+			pic:'UI/press_attack_to_join.png',
+			w:120,h:116
+		},
+		text:
+		{
+			//      blink1    blink2    static    computer
+			color:['#afdcff','#1946ff','#ffffff','#ff9b9b'],
+			box_width:120, box_height:18
+		}
+	}
 });

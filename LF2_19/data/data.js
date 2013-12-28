@@ -8,7 +8,7 @@ heavyweapon				id from 150~199
 specialattack			id from 200~299
 baseball
 miscell (Criminal, etc, broken_weapon)
-drinks (Milk and beer)
+drink (Milk and beer)
 effects (blood,fire)	id from 300~349 (extended standard)
  */
 //adapted standard
@@ -17,9 +17,9 @@ define({
 
 	object:
 	[
-		{id:30, type:'character', file:'data/bandit.js'},
-		{id: 1, type:'character', file:'data/deep.js'},
-		{id:11, type:'character', file:'data/davis.js'},
+		{id:30, type:'character', file:'data/bandit.js', name:'Bandit', pic:'sprite/bandit_f.png'},
+		{id: 1, type:'character', file:'data/deep.js', name:'Deep', pic:'sprite/deep_f.png'},
+		{id:11, type:'character', file:'data/davis.js', name:'Davis', pic:'sprite/davis_f.png'},
 
 		{id:100, type:'lightweapon', file:'data/weapon0.js'}, //stick
 		{id:101, type:'lightweapon', file:'data/weapon2.js'}, //hoe
@@ -30,6 +30,11 @@ define({
 
 		{id:203, type:'specialattack', file:'data/deep_ball.js'},
 		{id:207, type:'specialattack', file:'data/davis_ball.js'}
+	],
+
+	AI:
+	[
+		{type:'AIscript', file:'AI/Crusher.js', name:'Crusher 1.0'}
 	],
 
 	file_editing: {},
@@ -47,10 +52,15 @@ define({
 		{id:10,file:'bg/template/bg.js'}
 	],
 
-	UI: {file:'UI/UI.js'},
-
 	config:
 	[
-		{id:'100~199', then:'drop weapon'}
-	]
+		'id: 100~199 drop weapon'
+	],
+
+	//extended standard
+
+	UI: {file:'UI/UI.js'},
+
+	properties: {file:'data/properties.js'}
+
 });

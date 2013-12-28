@@ -150,6 +150,13 @@ function controller (config)
 	\*/
 }
 
+/*\
+ * controller.type
+ [ property ]
+ - (string)
+ * value=`keyboard`
+\*/
+controller.prototype.type = 'keyboard';
 
 /*\
  * controller.key
@@ -814,16 +821,15 @@ extend_object: function (obj1, obj2)
 {
 	for (var p in obj2)
 	{
-		if ( typeof obj2[p]=='object' )
+		if ( typeof obj2[p]==='object' )
 		{
-			obj1[p] = arguments.callee((obj1[p]?obj1[p]:{}), obj2[p]);
+			obj1[p] = arguments.callee((obj1[p]?obj1[p]:(obj2[p] instanceof Array?[]:{})), obj2[p]);
 		} else
 		{
 			obj1[p] = obj2[p];
 		}
 	}
 	return obj1;
-	// http://stackoverflow.com/questions/122102/what-is-the-most-efficient-way-to-clone-a-javascript-object
 },
 
 /*\
@@ -1580,8 +1586,11 @@ sprite.prototype.draw_to_canvas=function(canvas)
 \*/
 sprite.prototype.remove=function()
 {
-	this.el.parentNode.removeChild(this.el);
-	this.removed=true;
+	if( !this.removed)
+	{
+		this.el.parentNode.removeChild(this.el);
+		this.removed=true;
+	}
 }
 /*\
  * sprite.attach
@@ -1841,6 +1850,12 @@ G.combo_tag =
 	'D>AJ':'hit_Fj',
 	'DJA':'hit_ja'
 };
+G.combo_priority =
+{	//larger number is higher priority
+	'up':0,'down':0,'left':0,'right':0,'def':0,'jump':0,'att':0,'run':0,
+	'D>A':1, 'D<A':1, 'DvA':1, 'D^A':1,
+	'DvJ':1, 'D^J':1, 'D>J':1, 'D<J':1, 'D<AJ':1, 'D>AJ':1, 'DJA':1
+};
 
 G.lazyload = function(O) //return true to delay loading of data files
 {
@@ -1852,7 +1867,7 @@ G.lazyload = function(O) //return true to delay loading of data files
 		this.character_list[file] = true;
 		return true; //delay loading of all character files
 	}
-	else
+	else if( O.type)
 	{
 		var file = util.filename(O.file);
 		if( file.lastIndexOf('_')!==-1)
@@ -2019,7 +2034,7 @@ return G;
  * loader is a requirejs plugin that loads content packages
 \*/
 
-define('LF/loader',['LF/packages','LF/global'],function(packages,global){
+define('LF/loader',['LF/packages','LF/global','F.core/util'],function(packages,global,Futil){
 
 	return {
 		load: function (name, require, load, config)
@@ -2050,21 +2065,19 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 			{
 				path=normalize_path(pack.path);
 				content.location = normalize_path(config.baseUrl)+path;
-				require( [path+'manifest'], function(mani)
+				require( [filepath('manifest')], function(mani)
 				{
 					manifest=mani;
 					var manifest_schema=
 					{
 						"data":"string",
-						"properties":"string",
 						"resourcemap":"string!optional"
 					}
 					if( !validate(manifest_schema,manifest))
 					{
 						console.log('loader: error: manifest.js of '+path+' is not correct.');
 					}
-					require( [path+normalize_file(manifest.data)], load_data);
-					load_something('properties');
+					require( [filepath(manifest.data)], load_data);
 					load_something('resourcemap');
 				});
 			}
@@ -2079,13 +2092,14 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 					ppp=ppp.slice(1);
 				return ppp;
 			}
-			function normalize_file(ppp)
+			function filepath(ppp)
 			{
 				if( !ppp)
 					return '';
 				if( ppp.lastIndexOf('.js')===ppp.length-3)
 					ppp = ppp.slice(0,ppp.length-3);
-				return ppp;
+				var suf = path.indexOf('http')===0?'.js':'';
+				return path+ppp+suf;
 			}
 			function load_data(datalist)
 			{
@@ -2101,57 +2115,63 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 				}
 
 				var datafile_depend=[];
-				for( var i=0; i<datalist.object.length; i++)
-					if( allow_load(datalist.object[i]))
-						datafile_depend.push(path+normalize_file(datalist.object[i].file));
 
-				for( var i=0; i<datalist.background.length; i++)
-					datafile_depend.push(path+normalize_file(datalist.background[i].file));
-
-				datafile_depend.push(path+normalize_file(datalist.UI.file));
+				for( var i in datalist)
+				{
+					if( datalist[i] instanceof Array)
+					{
+						for( var j=0; j<datalist[i].length; j++)
+							if( datalist[i][j].file)
+							if( allow_load(datalist[i][j]))
+								datafile_depend.push(filepath(datalist[i][j].file));
+					}
+					else if( typeof datalist[i]==='object')
+					{
+						if( datalist[i].file)
+						if( allow_load(datalist[i]))
+							datafile_depend.push(filepath(datalist[i].file));
+					}
+				}
 
 				require( datafile_depend, function()
 				{
-					var gamedata={};
-					for ( var i in datalist)
-					{
-						if( i==='object')
-							gamedata[i]=[];
-						else if( i==='background')
-							gamedata[i]=[];
-						else
-							gamedata[i]=datalist[i];
-					}
-					for( var i=0, j=0; i<datalist.object.length; i++)
-					{
-						var O = datalist.object[i];
-						var obj=
-						{
-							id: O.id,
-							type: O.type
-						};
-						if( allow_load(O))
-						{
-							obj.data = arguments[j];
-							j++
-						}
-						else
-						{
-							obj.data = 'lazy';
-							obj.file = path+normalize_file(O.file);
-						}
+					var gamedata=Futil.extend_object({},datalist);
+					var param = 0;
 
-						gamedata.object.push(obj);
-					}
-					for( var i=0; i<datalist.background.length; i++,j++)
+					for( var i in datalist)
 					{
-						var O = datalist.background[i];
-						gamedata.background.push({
-							id: O.id,
-							data: arguments[j]
-						});
+						if( datalist[i] instanceof Array)
+						{
+							for( var j=0; j<datalist[i].length; j++)
+								if( datalist[i][j].file)
+								{
+									if( allow_load(datalist[i][j]))
+									{
+										gamedata[i][j].data = arguments[param];
+										param++;
+									}
+									else
+									{
+										gamedata[i][j].data = 'lazy';
+									}
+								}
+						}
+						else if( typeof datalist[i]==='object')
+						{
+							if( datalist[i].file)
+							{
+								if( allow_load(datalist[i]))
+								{
+									gamedata[i].data = arguments[param];
+									param++;
+								}
+								else
+								{
+									gamedata[i].data = 'lazy';
+								}
+							}
+						}
 					}
-					gamedata.UI = arguments[j];
 
 					content.data=gamedata;
 					module_lazyload();
@@ -2160,7 +2180,7 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 			}
 			function load_something(thing)
 			{
-				require( [path+normalize_file(manifest[thing])], function(it){
+				require( [filepath(manifest[thing])], function(it){
 					content[thing] = it;
 					load_ready();
 				});
@@ -2170,7 +2190,6 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 				var content_schema=
 				{
 					data:'object',
-					properties:'object',
 					resourcemap:'object!optional',
 					location:'string'
 				}
@@ -2195,10 +2214,10 @@ define('LF/loader',['LF/packages','LF/global'],function(packages,global){
 									O=objects[j];
 									break;
 								}
-							if( O && O.data==='lazy')
+							if( O && O.file && O.data==='lazy')
 							{
 								load_list.push(O);
-								res_list .push(O.file);
+								res_list .push(filepath(O.file));
 							}
 						}
 						requirejs(res_list,function()
@@ -2654,7 +2673,7 @@ var GC=Global.gameplay;
 \*/
 function mech(parent)
 {
-	var spec=parent.spec;
+	var spec=parent.match.spec;
 	if( spec[parent.id] && spec[parent.id].mass!==undefined && spec[parent.id].mass!==null)
 		this.mass=spec[parent.id].mass;
 	else
@@ -3073,12 +3092,244 @@ return mech;
 });
 
 /*\
+ * AI.js
+ * support AI scripting
+\*/
+
+define('LF/AI',['F.core/util'],
+function(Futil)
+{
+	function AIin(self)
+	{
+		this.self = self;
+	}
+	AIin.prototype.facing=function()
+	{
+		var $=this.self;
+		return $.ps.dir==='left';
+	}
+	AIin.prototype.type=function()
+	{
+		var $=this.self;
+		switch ($.type)
+		{
+			case 'character':     return 0;
+			case 'lightweapon':   return 1;
+			case 'heavyweapon':   return 2;
+			case 'specialattack': return 3;
+			case 'baseball':      return 4;
+			case 'criminal':      return 5;
+			case 'drink':         return 6;
+		}
+	}
+	AIin.prototype.weapon_type=function()
+	{
+		var $=this.self;
+		if( $.hold.obj)
+			switch ($.hold.obj.type)
+			{
+				case 'lightweapon':
+					if( $.proper($.hold.obj.id,'stand_throw'))
+						return 101;
+					else
+						return 1;
+				break;
+				case 'heavyweapon':
+					return 2;
+				break;
+				case 'character':
+					//I am being held
+					return -1*$.AI.type();
+				break;
+			}
+		return 0;
+	}
+	AIin.prototype.weapon_held=function()
+	{
+		var $=this.self;
+		if( $.hold.obj)
+			return $.hold.obj.uid;
+		return -1;
+	}
+	AIin.prototype.weapon_holder=function()
+	{
+		var $=this.self;
+		if( $.hold.obj)
+		switch ($.AI.type())
+		{
+			case 1: case 2: case 4: case 6:
+			return $.hold.obj.uid;
+		}
+	}
+	AIin.prototype.clone=function()
+	{
+		return -1;
+	}
+	AIin.prototype.blink=function()
+	{
+		var $=this.self;
+		if( $.effect.blink)
+			return Math.round($.effect.timeout/2);
+		return 0;
+	}
+	AIin.prototype.shake=function()
+	{
+		var $=this.self;
+		if( $.effect.oscillate)
+			return $.effect.timeout * ($.effect.dvx||$.effect.dvy?1:-1);
+		return 0;
+	}
+	AIin.prototype.ctimer=function()
+	{
+		var $=this.self;
+		if( $.catching && $.state()===9)
+			return $.statemem.counter*6;
+		return 0;
+	}
+	AIin.prototype.seqcheck=function(qe)
+	{
+		var $=this.self;
+		if( $.combodec)
+		{
+			var seq = $.combodec.seq;
+			if( seq.length<1 || qe.length<1) return 0;
+			var k1 = seq[seq.length-1];
+			if( k1===qe[0]) return 1;
+			if( seq.length<2 || qe.length<2) return 0;
+			var k2 = seq[seq.length-2];
+			if( k2===qe[0] && k1===[1]) return 2;
+			if( seq.length<3 || qe.length<3) return 0;
+			var k3 = seq[seq.length-3];
+			if( k3===qe[0] && k2===qe[1] && k1===qe[2]) return 3;
+		}
+		return 0;
+	}
+	AIin.prototype.rand=function(i)
+	{
+		var $=this.self;
+		return Math.floor($.match.random()*i);
+	}
+	AIin.prototype.frame=function(N)
+	{
+		var $=this.self;
+		var tags={'bdy':'make_array','itr':'make_array','wpoint':'object'};
+		var O={};
+		if( $.data.frame[N])
+		for( var I in $.data.frame[N])
+		{
+			if( typeof $.data.frame[N][I]==='object')
+			{
+				if( tags[I]==='make_array')
+				{
+					var arr = Futil.make_array($.data.frame[N][I]);
+					O[I+'_count'] = arr.length;
+					O[I+'s'] = arr;
+				}
+				else if( tags[I]==='object')
+				{
+					O[I] = $.data.frame[N][I];
+				}
+			}
+			else
+				O[I] = $.data.frame[N][I];
+		}
+		else
+		{
+			for( var t in tags)
+				if( tags[t]==='make_array')
+					O[t+'_count'] = 0;
+		}
+		return O;
+	}
+	AIin.prototype.frame1=function(N)
+	{
+		return 0;
+	}
+
+	function AIcon()
+	{
+		this.state={};
+		this.child=new Array();
+		this.sync=true;
+		this.buf=new Array();
+	}
+	AIcon.prototype.key=function(key,down)
+	{
+		if( this.sync)
+		{
+			this.buf.push([key,down]);
+		}
+		else
+		{
+			if( this.child)
+				for(var J in this.child)
+					this.child[J].key(key,down);
+			this.state[I]=down;
+		}
+	}
+	AIcon.prototype.keypress=function(key,x,y)
+	{
+		if( (x===undefined && y===undefined) ||
+			(x===1 && y===0))
+		{
+			if( this.state[key])
+				this.key(key,0);
+			this.key(key,1);
+			this.key(key,0);
+		}
+		else if(x===1 && y===1)
+		{
+			if( !this.state[key])
+				this.key(key,1);
+		}
+		else if(x===0 && y===0)
+		{
+			if( this.state[key])
+				this.key(key,0);
+		}
+	}
+	AIcon.prototype.keyseq=function(seq)
+	{
+		for( var i=0; i<seq.length; i++)
+			this.keypress(seq[i]);
+	}
+	AIcon.prototype.clear_states=function()
+	{
+		for(var I in this.state)
+			this.state[I]=0;
+	}
+	AIcon.prototype.fetch=function()
+	{
+		for( var i=0; i<this.buf.length; i++)
+		{
+			var I=this.buf[i][0];
+			var down=this.buf[i][1];
+			if( this.child)
+				for(var j=0; j<this.child.length; j++)
+					this.child[j].key(I,down);
+			this.state[I]=down;
+		}
+		this.buf.length=0;
+	}
+	AIcon.prototype.flush=function()
+	{
+		this.buf=[];
+	}
+	AIcon.prototype.type = 'AIcontroller';
+
+	return {
+		interface:AIin,
+		controller:AIcon
+	};
+});
+
+/*\
  * livingobject
  * 
  * a base class for all living objects
 \*/
-define('LF/livingobject',['LF/global','LF/sprite','LF/mechanics','LF/util','F.core/sprite'],
-function ( Global, Sprite, Mech, util, Fsprite)
+define('LF/livingobject',['LF/global','LF/sprite','LF/mechanics','LF/AI','LF/util','F.core/sprite','F.core/util'],
+function ( Global, Sprite, Mech, AI, util, Fsprite, Futil)
 {
 	var GC=Global.gameplay;
 
@@ -3109,7 +3360,6 @@ function ( Global, Sprite, Mech, util, Fsprite)
 
 		//handles
 		$.match=config.match;
-		$.spec=$.match.spec;
 		$.scene=$.match.scene;
 		$.visualeffect=$.match.visualeffect;
 		$.bg=$.match.background;
@@ -3142,11 +3392,13 @@ function ( Global, Sprite, Mech, util, Fsprite)
 			}
 		};
 		$.mech = new Mech($);
+		$.AI = new AI.interface($);
 		$.ps = $.mech.create_metric(); //position, velocity, and other physical properties
 		$.trans = new frame_transistor($);
 		$.itr=
 		{
-			vrest: [], //a history of what have been hit by me recently
+			arest: 0, //attack rest - time until the attacker can do a single hit again
+			vrest:[], //victim rest - time until a character can be hit again
 		};
 		$.effect=
 		{
@@ -3171,6 +3423,7 @@ function ( Global, Sprite, Mech, util, Fsprite)
 	{
 		this.sp.destroy();
 		this.shadow.remove();
+		//TODO: remove combo listener to controller
 	}
 
 	livingobject.prototype.log = function(mes)
@@ -3293,7 +3546,6 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		else
 			$.state_update('TU');
 
-		//attack rest
 		for( var I in $.itr.vrest)
 		{	//watch out that itr.vrest might grow very big
 			if( $.itr.vrest[I] > 0)
@@ -3358,7 +3610,7 @@ function ( Global, Sprite, Mech, util, Fsprite)
 		return this.mech.body();
 	}
 
-	livingobject.prototype.cur_state=function()
+	livingobject.prototype.state=function()
 	{
 		return this.frame.D.state;
 	}
@@ -3454,27 +3706,29 @@ function ( Global, Sprite, Mech, util, Fsprite)
 			$f.ani.i=a;
 	}
 
-	livingobject.prototype.itr_rest_update=function(uid,ITR)
+	livingobject.prototype.itr_arest_test=function()
 	{
 		var $=this;
-		var newrest = GC.default.character.arest;
-		//rest: cannot interact again for some time
-		if( ITR)
-		{
-			if( ITR.arest)
-				newrest = ITR.arest;
-			else if( ITR.vrest)
-				newrest = ITR.vrest;
-		}
-		$.itr.vrest[uid] = newrest;
-		//console.log('update vrest['+uid+'] of '+$.id+' to '+newrest);
+		return !$.itr.arest;
 	}
-
-	livingobject.prototype.itr_rest_test=function(uid,ITR)
+	livingobject.prototype.itr_arest_update=function(ITR)
 	{
 		var $=this;
-		//console.log('vrest['+uid+'] of '+$.id+' is '+$.itr.vrest[uid]);
+		if( ITR && ITR.arest)
+			$.itr.arest = ITR.arest;
+		else
+			$.itr.arest = GC.default.character.arest;
+	}
+	livingobject.prototype.itr_vrest_test=function(uid)
+	{
+		var $=this;
 		return !$.itr.vrest[uid];
+	}
+	livingobject.prototype.itr_vrest_update=function(attacker_uid,ITR)
+	{
+		var $=this;
+		if( ITR && ITR.vrest)
+			$.itr.vrest[attacker_uid] = ITR.vrest;
 	}
 
 	livingobject.prototype.switch_dir = function(e)
@@ -3518,8 +3772,8 @@ function ( Global, Sprite, Mech, util, Fsprite)
 			prop=id;
 			id=$.id;
 		}
-		if( $.spec[id])
-			return $.spec[id][prop];
+		if( $.match.spec[id])
+			return $.match.spec[id][prop];
 		return undefined;
 	}
 
@@ -4122,13 +4376,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					var hit= $.scene.query(vol, $, {tag:'itr:6', not_team:$.team});
 					for( var t in hit)
 					{	//if someone is in my hitting scoope who has itr kind:6
-						var hit_itr=(hit[t].vol_itr(6))[0].data;
-						if( $.itr_rest_test( hit[t].uid, hit_itr))
-						{
-							$.trans.frame(70, 10); //I 'll use super punch!
-							$.itr_rest_update( hit[t].uid, hit_itr);
-							return 1;
-						}
+						$.trans.frame(70, 10); //I 'll use super punch!
+						return 1;
 					}
 					//
 					$.trans.frame($.match.random()<0.5? 60:65, 10);
@@ -4783,7 +5032,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			break;
 		}},
 
-		'15':function(event,K) //stop_running, crouch, crouch2, dash_attack, light_weapon_thw, heavy_weapon_thw, heavy_stop_run
+		'15':function(event,K) //stop_running, crouch, crouch2, dash_attack, light_weapon_thw, heavy_weapon_thw, heavy_stop_run, sky_lgt_wp_thw
 		{	var $=this;
 			switch (event) {
 
@@ -4809,6 +5058,10 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						$.trans.inc_wait(-1);
 					break;
 					}
+				break;
+				case 54: //sky_lgt_wp_thw
+					if( $.frame.D.next===999 && $.ps.y<0)
+						$.trans.set_next(212); //back to jump
 				break;
 				}
 			break;
@@ -4964,6 +5217,30 @@ function(livingobject, Global, Fcombodec, Futil, util)
 	//inherit livingobject
 	function character(config,data,thisID)
 	{
+		/*(function ()
+		{	//a small benchmark for make_array efficiency,
+			//for deep and davis,
+			//>>time to make_array of 1105 frames:15; x=33720
+			//>>time to make_array of 1070 frames:15; x=29960
+			var sta=new Date();
+			var ccc=0;
+			var x=0;
+			var tags={'itr':'itr','bdy':'bdy'};
+			for( var m=0; m<5; m++)
+			for( var j in data.frame)
+			{
+				ccc++;
+				for( var l in tags)
+				{
+					var obj = Futil.make_array(data.frame[j][l]);
+					for( var k=0; k<obj.length; k++)
+						x+=obj[k].x;
+				}
+			}
+			var fin=new Date();
+			console.log('time to make_array of '+ccc+' frames of '+data.bmp.name+':'+(fin-sta)+'; x='+x);
+		}());*/
+
 		var $=this;
 		// chain constructor
 		livingobject.call(this,config,data,thisID);
@@ -5014,7 +5291,6 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		$.hold=
 		{
 			obj: null, //holding weapon
-			id: 0 //id of holding
 		};
 		$.health.bdefend=0;
 		$.health.fall=0;
@@ -5031,6 +5307,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			}
 			var nextF = $.data.frame[next];
 			if( !nextF) return;
+			//check if mp is enough
 			var dmp=0;
 			if( nextF.mp>0)
 				dmp=nextF.mp%1000;
@@ -5083,10 +5360,12 @@ function(livingobject, Global, Fcombodec, Futil, util)
 	character.prototype.hit=function(ITR, att, attps, rect)
 	{
 		var $=this;
-		var accepthit=false;
+		if( $.itr.vrest[att.uid])
+			return false;
 
+		var accepthit=false;
 		var ef_dvx=0, ef_dvy=0, dhp=0;
-		if( $.cur_state()===10) //being caught
+		if( $.state()===10) //being caught
 		{
 			if( $.catching.caught_cpointhurtable())
 			{
@@ -5113,7 +5392,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				}
 			}
 		}
-		else if( $.cur_state()===14)
+		else if( $.state()===14)
 		{
 			//lying
 		}
@@ -5126,7 +5405,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			ef_dvy = ITR.dvy ? ITR.dvy:0;
 			var effectnum = ITR.effect!==undefined?ITR.effect:GC.default.effect.num;
 
-			if( $.cur_state()===7 &&
+			if( $.state()===7 &&
 			    (attps.x > $.ps.x)===($.ps.dir==='right')) //attacked in front
 			{
 				if( ITR.injury)	dhp -= GC.defend.injury.factor * ITR.injury;
@@ -5199,7 +5478,11 @@ function(livingobject, Global, Fcombodec, Futil, util)
 
 		if( dhp<0)
 			$.injury(dhp);
-		//if( accepthit) $.log('hit: next='+$.trans.next());
+		if( accepthit)
+		{
+			if( ITR && ITR.vrest)
+				$.itr.vrest[att.uid] = ITR.vrest;
+		}
 		return accepthit;
 	}
 	character.prototype.injury=function(dhp)
@@ -5230,14 +5513,14 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				{
 					if( hit[t].team !== $.team) //only catch other teams
 					if( hit[t].type==='character') //only catch characters
-					if( (ITR.kind===1 && hit[t].cur_state()===16) //you are in dance of pain
+					if( (ITR.kind===1 && hit[t].state()===16) //you are in dance of pain
 					 || (ITR.kind===3)) //super catch
-					if( $.itr_rest_test( hit[t].uid, ITR))
+					if( !$.itr.arest)
 					{
 						var dir = hit[t].caught_a(ITR,$,{x:$.ps.x,y:$.ps.y,z:$.ps.z});
 						if( dir)
 						{
-							$.itr_rest_update( hit[t].uid, ITR);
+							$.itr_arest_update(ITR);
 							if( dir==='front')
 								$.trans.frame(ITR.catchingact[0], 10);
 							else
@@ -5260,7 +5543,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					if( hit[t].type==='lightweapon' || hit[t].type==='heavyweapon')
 					if( hit[t].pick($))
 					{
-						$.itr_rest_update( hit[t].uid, ITR);
+						$.itr_arest_update(ITR);
 						if( ITR.kind===2)
 						{
 							if( hit[t].type==='lightweapon')
@@ -5304,12 +5587,12 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					if( !(hit[t].type==='character' && hit[t].team===$.team)) //cannot attack characters of same team
 					if( !(hit[t].type!=='character' && hit[t].team===$.team && hit[t].ps.dir===$.ps.dir)) //can only attack objects of same team if head on collide
 					if( ITR.effect===undefined || ITR.effect===0 || ITR.effect===1 ||
-						(ITR.effect===4 && hit[t].type==='specialattack' && hit[t].cur_state()===3000))
-					if( $.itr_rest_test( hit[t].uid, ITR))
+						(ITR.effect===4 && hit[t].type==='specialattack' && hit[t].state()===3000))
+					if( !$.itr.arest)
 					if( hit[t].hit(ITR,$,{x:$.ps.x,y:$.ps.y,z:$.ps.z},vol))
 					{	//hit you!
-						$.itr_rest_update( hit[t].uid, ITR);
-						$.log('hit:'+ITR.fall);
+						$.itr_arest_update(ITR);
+						//$.log('hit:'+ITR.fall);
 						//stalls
 						if( $.state_update('hit_stop'))
 							; //do nothing
@@ -5352,7 +5635,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				}
 				if( act.hit!==null && act.hit!==undefined)
 				{
-					$.itr_rest_update( act.hit, act);
+					$.itr_arest_update(act);
 					//stalls
 					$.trans.inc_wait(GC.default.itr.hit_stop, 10);
 				}
@@ -5404,7 +5687,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 	character.prototype.caught_a=function(ITR, att, attps)
 	{	//this is called when the catcher has an ITR with kind: 1
 		var $=this;
-		if( $.cur_state()===16) //I am in dance of pain
+		if( $.state()===16) //I am in dance of pain
 		{
 			if( (attps.x > $.ps.x)===($.ps.dir==='right'))
 				$.trans.frame(ITR.caughtact[0], 20);
@@ -5493,7 +5776,7 @@ function weapon(type)
 
 				$.interaction();
 
-				switch( $.cur_state())
+				switch( $.state())
 				{
 					case 1001:
 					case 2001:
@@ -5600,12 +5883,13 @@ function weapon(type)
 
 		if( $.team!==0)
 		if(($.heavy) ||
-		   ($.light && $.cur_state()===1002))
+		   ($.light && $.state()===1002))
 		for( var j in ITR)
 		{	//for each itr tag
 			if( ITR[j].kind===0) //kind 0
 			{
 				var vol=$.mech.volume(ITR[j]);
+				vol.zwidth = 0;
 				var hit= $.scene.query(vol, $, {tag:'body', not_team:$.team});
 				for( var k in hit)
 				{	//for each being hit
@@ -5621,10 +5905,10 @@ function weapon(type)
 						', vrest='+itr_rest.vrest+
 						', itr.arest='+$.itr.arest+
 						', itr.vrest='+$.itr.vrest[hit[k].uid]);*/
-					if( $.itr_rest_test( hit[k].uid, itr_rest))
+					if( !$.itr.arest)
 					if( hit[k].hit(ITR[j],$,{x:$.ps.x,y:$.ps.y,z:$.ps.z},vol))
 					{	//hit you!
-						//console.log('hit'+'$.state='+$.cur_state());
+						//console.log('hit'+'$.state='+$.state());
 						var ps=$.ps;
 						var vx=(ps.vx===0?0:(ps.vx>0?1:-1));
 						if( $.light)
@@ -5632,7 +5916,7 @@ function weapon(type)
 							ps.vx = vx * GC.weapon.hit.vx;
 							ps.vy = GC.weapon.hit.vy;
 						}
-						$.itr_rest_update( hit[k], hit[k].uid, itr_rest);
+						$.itr_arest_update(ITR);
 						//create an effect
 						var timeout;
 						if( $.light) timeout=2;
@@ -5656,13 +5940,15 @@ function weapon(type)
 	typeweapon.prototype.hit=function(ITR, att, attps, rect)
 	{
 		var $=this;
-		if( $.holder)
+		if( $.hold.obj)
+			return false;
+		if( $.itr.vrest[att.uid])
 			return false;
 
 		var accept=false;
 		if( $.light)
 		{
-			if( $.cur_state()===1002) //throwing
+			if( $.state()===1002) //throwing
 			{
 				accept=true;
 				if( (att.dirh()>0)!==($.ps.vx>0)) //head-on collision
@@ -5671,7 +5957,7 @@ function weapon(type)
 				$.ps.vz *= GC.weapon.reverse.factor.vz;
 				$.team = att.team; //change to the attacker's team
 			}
-			else if( $.cur_state()===1004) //on_ground
+			else if( $.state()===1004) //on_ground
 			{
 				//var asp = att.mech.speed();
 				//$.ps.vx= asp* GC.weapon.gain.factor.x * (att.ps.vx>0?1:-1);
@@ -5688,7 +5974,7 @@ function weapon(type)
 		var fall= ITR.fall!==undefined? ITR.fall: GC.default.fall.value;
 		if( $.heavy)
 		{
-			if( $.cur_state()===2004) //on_ground
+			if( $.state()===2004) //on_ground
 			{
 				accept=true;
 				if( fall<30)
@@ -5703,7 +5989,7 @@ function weapon(type)
 					$.trans.frame(999);
 				}
 			}
-			else if( $.cur_state()===2000) //in_the_sky
+			else if( $.state()===2000) //in_the_sky
 			{
 				if( fall>=GC.fall.KO)
 				{
@@ -5717,7 +6003,11 @@ function weapon(type)
 			}
 		}
 		if( accept)
+		{
 			$.visualeffect_create( 0, rect, (attps.x < $.ps.x), (fall<GC.fall.KO?1:2));
+			if( ITR && ITR.vrest)
+				$.itr.vrest[att.uid] = ITR.vrest;
+		}
 		return accept;
 	}
 
@@ -5764,7 +6054,7 @@ function weapon(type)
 				if( $.heavy)
 					$.trans.frame(999);
 				$.trans.trans(); //update immediately
-				$.holder=null;
+				$.hold.obj=null;
 				result.thrown=true;
 			}
 
@@ -5793,13 +6083,12 @@ function weapon(type)
 						if( ITR[j].kind===5) //kind 5 only
 						{
 							var vol=$.mech.volume(ITR[j]);
+							vol.zwidth = 0;
 							var hit= $.scene.query(vol, [$,att], {tag:'body', not_team:$.team});
 							for( var k in hit)
 							{	//for each being hit
-								if( $.itr_rest_test( hit[k].uid, ITR[j]) &&
-								  att.itr_rest_test( hit[k].uid, ITR[j]) )
+								if( !att.itr.arest)
 								{	//if rest allows
-									$.itr_rest_update( hit[k], hit[k].uid, ITR[j]);
 									var citr;
 									if( $.data.weapon_strength_list &&
 										$.data.weapon_strength_list[wpoint.attacking])
@@ -5831,7 +6120,7 @@ function weapon(type)
 	{
 		var $=this;
 		$.team=0;
-		$.holder=null;
+		$.hold.obj=null;
 		if( dvx) $.ps.vx=dvx * 0.5; //magic number
 		if( dvy) $.ps.vy=dvy * 0.2;
 		$.ps.zz=0;
@@ -5842,9 +6131,9 @@ function weapon(type)
 	typeweapon.prototype.pick=function(att)
 	{
 		var $=this;
-		if( !$.holder)
+		if( !$.hold.obj)
 		{
-			$.holder=att;
+			$.hold.obj=att;
 			$.team=att.team;
 			$.shadow.hide();
 			return true;
@@ -6036,15 +6325,16 @@ var GC=Global.gameplay;
 			if( ITR[j].kind===0) //kind 0
 			{
 				var vol=$.mech.volume(ITR[j]);
+				vol.zwidth = 0;
 				var hit= $.scene.query(vol, $, {tag:'body'});
 				for( var k in hit)
 				{	//for each being hit
 					if( !(hit[k].type==='character' && hit[k].team===$.team)) //cannot attack characters of same team
 					if( !(hit[k].type!=='character' && hit[k].team===$.team && hit[k].ps.dir===$.ps.dir)) //can only attack objects of same team if head on collide
-					if( $.itr_rest_test( hit[k].uid, ITR[j]))
+					if( !$.itr.arest)
 					if( hit[k].hit(ITR[j],$,{x:$.ps.x,y:$.ps.y,z:$.ps.z},vol))
 					{	//hit you!
-						$.itr_rest_update( hit[k].uid, ITR[j]);
+						$.itr_arest_update(ITR);
 						$.state_update('hit_others');
 						$.ps.vx = 0;
 						if( ITR[j].arest) break; //attack one enemy only
@@ -6057,6 +6347,11 @@ var GC=Global.gameplay;
 	specialattack.prototype.hit=function(ITR, att, attps, rect)
 	{
 		var $=this;
+		if( $.itr.vrest[att.uid])
+			return false;
+
+		if( ITR && ITR.vrest)
+			$.itr.vrest[att.uid] = ITR.vrest;
 		return $.state_update('hit', ITR, att, attps, rect);
 	}
 
@@ -7255,6 +7550,19 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 		}
 	}
 
+	background.prototype.destroy=function()
+	{
+		var $=this;
+		if ( $.layers)
+		for( var i=1; i<$.layers.length; i++) //starts from 1, because layers[0] is floor
+			$.layers[i].sp.remove();
+		if ( $.timed_layers)
+		for( var i=0; i<$.timed_layers.length; i++)
+			$.timed_layers[i].sp.remove();
+		if( $.scrollbar)
+			$.scrollbar.parentNode.removeChild($.scrollbar);
+	}
+
 	//return true if the moving object is leaving the scene
 	background.prototype.leaving=function(ps)
 	{
@@ -7446,10 +7754,10 @@ return SeedableRandom;
 \*/
 
 define('LF/match',['F.core/util','F.core/controller','F.core/sprite',
-'LF/factories','LF/scene','LF/background','LF/third_party/random','LF/util',
+'LF/factories','LF/scene','LF/background','LF/AI','LF/third_party/random','LF/util',
 'LF/global'],
 function(Futil,Fcontroller,Fsprite,
-factory,Scene,Background,Random,util,
+factory,Scene,Background,AI,Random,util,
 Global)
 {
 	var GA=Global.application;
@@ -7458,6 +7766,7 @@ Global)
 	 [ class ]
 	 |	config =
 	 |	{
+	 |  manager,//the game manager
 	 |	stage,  //the XZ plane to place all living objects
 	 |	state,  //the state machine handling various events in a match
 	 |	config, //default config for each object type
@@ -7467,16 +7776,16 @@ Global)
 	function match(config)
 	{
 		var $=this;
+		$.manager = config.manager;
 		$.stage = config.stage;
 		$.state = config.state;
 		$.data = config.package.data;
-		$.spec = config.package.properties;
+		$.spec = $.data.properties.data;
 		$.grouped_object = Futil.group_elements($.data.object,'type');
 		$.config = config.config;
 		if( !$.config)
 			$.config = {};
 		$.time;
-		$.setup_UI();
 	}
 
 	match.prototype.create=function(setting)
@@ -7506,7 +7815,7 @@ Global)
 		var char_list=[];
 		for( var i=0; i<setting.player.length; i++)
 		{
-			var name = util.filename(util.select_from($.grouped_object.character,{id:setting.player[i].id}).file);
+			var name = util.filename($.data.object[setting.player[i].datanum].file);
 			var objects = util.select_from($.data.object,function(O){
 					if( !O.file) return;
 					var file = util.filename(O.file);
@@ -7527,7 +7836,11 @@ Global)
 		$.create_effects($.config.effects);
 		$.control = $.create_controller(setting.control);
 		$.create_background(setting.background);
+		$.panel=[]; for( var i=0; i<8; i++) $.panel[i]={};
+		$.pause_mess = setting.pause_mess;
+		$.pause_mess.hide();
 		$.tasks = []; //pending tasks
+		$.AIscript = [];
 
 		this.data.object.load(char_list,function()
 		{
@@ -7545,43 +7858,34 @@ Global)
 		$.time.paused=true; //pause execution
 		clearInterval($.time.timer);
 
-		$.for_all('destroy'); //destroy all objects
-		var e=$.stage; //clear the stage DOM node
-		while (e.lastChild)
-			e.removeChild(e.lastChild);
+		//destroy all objects
+		$.for_all('destroy');
+		$.background.destroy();
+		for( var i=0; i<$.panel.length; i++)
+		{
+			if( $.panel[i].hp)
+			{
+				$.panel[i].hp.remove();
+				$.panel[i].hp_bound.remove();
+				$.panel[i].mp.remove();
+				$.panel[i].mp_bound.remove();
+				$.panel[i].spic.remove();
+			}
+		}
+
+		//clear the window DOM
+		var divs = ['background','floor'];
+		for (var i in divs)
+		{
+			var e = util.div(divs[i]);
+			while (e.lastChild)
+				e.removeChild(e.lastChild);
+		}
 	}
 
 	match.prototype.log=function(mes)
 	{
 		console.log(this.time.t+': '+mes);
-	}
-
-	match.prototype.setup_UI=function()
-	{
-		var $=this;
-		if( util.div('pauseMessage'))
-		{
-			$.pause_mess = new Fsprite({
-				div: util.div('pauseMessage'),
-				img: $.data.UI.pause,
-				wh: 'fit'
-			});
-			$.pause_mess.hide();
-		}
-		if( util.div('panel'))
-		{
-			$.panel=[];
-			for( var i=0; i<8; i++)
-			{
-				var pane = new Fsprite({
-					canvas: util.div('panel'),
-					img: $.data.UI.panel.pic,
-					wh: 'fit'
-				});
-				pane.set_x_y($.data.UI.panel.pane_width*(i%4), $.data.UI.panel.pane_height*Math.floor(i/4));
-				$.panel.push(pane);
-			}
-		}
 	}
 
 	match.prototype.create_object=function(opoint, parent)
@@ -7661,6 +7965,8 @@ Global)
 		$.background.TU();
 		if( $.panel)
 			$.show_hp();
+		for( var i=0; i<$.AIscript.length; i++)
+			$.AIscript[i].TU();
 	}
 
 	match.prototype.match_event=function(E)
@@ -7750,10 +8056,25 @@ Global)
 		for( var i=0; i<players.length; i++)
 		{
 			var player = players[i];
-			var pdata = util.select_from($.data.object,{id:player.id}).data;
-			char_config.controller = player.controller;
+			var pdata = $.data.object[player.datanum].data;
+
+			var controller;
+			switch (player.controller.type)
+			{
+				case 'keyboard': case 'touch':
+					controller = player.controller;
+				break;
+				case 'AIscript':
+					controller = new AI.controller();
+				break;
+			}
+			char_config.controller = controller;
 			char_config.team = player.team;
 			var char = new factory.character(char_config, pdata, player.id);
+			if( controller.type==='AIcontroller')
+			{
+				$.AIscript.push(new player.controller(char,$,controller));
+			}
 			char.set_pos( pos[i].x, pos[i].y, pos[i].z); //TODO: proper player placements
 			var uid = $.scene.add(char);
 			$.character[uid] = char;
@@ -7761,28 +8082,31 @@ Global)
 			if( $.panel)
 			{
 				var spic = new Fsprite({
-					canvas: $.panel[i].el,
+					canvas: util.div('panel'),
 					img: pdata.bmp.small,
 					wh: 'fit'
 				});
-				spic.set_x_y($.data.UI.panel.x,$.data.UI.panel.y);
+				var X = $.data.UI.data.panel.pane_width*(i%4),
+					Y = $.data.UI.data.panel.pane_height*Math.floor(i/4);
+				spic.set_x_y( X+$.data.UI.data.panel.x, Y+$.data.UI.data.panel.y);
 				$.panel[i].uid = uid;
-				$.panel[i].hp_bound = new Fsprite({canvas: $.panel[i].el});
-				$.panel[i].hp_bound.set_x_y( $.data.UI.panel.hpx, $.data.UI.panel.hpy);
-				$.panel[i].hp_bound.set_w_h( $.data.UI.panel.hpw, $.data.UI.panel.hph);
-				$.panel[i].hp_bound.el.style.background = $.data.UI.panel.hp_dark;
-				$.panel[i].hp = new Fsprite({canvas: $.panel[i].el});
-				$.panel[i].hp.set_x_y( $.data.UI.panel.hpx, $.data.UI.panel.hpy);
-				$.panel[i].hp.set_w_h( $.data.UI.panel.hpw, $.data.UI.panel.hph);
-				$.panel[i].hp.el.style.background = $.data.UI.panel.hp_bright;
-				$.panel[i].mp_bound = new Fsprite({canvas: $.panel[i].el});
-				$.panel[i].mp_bound.set_x_y( $.data.UI.panel.mpx, $.data.UI.panel.mpy);
-				$.panel[i].mp_bound.set_w_h( $.data.UI.panel.mpw, $.data.UI.panel.mph);
-				$.panel[i].mp_bound.el.style.background = $.data.UI.panel.mp_dark;
-				$.panel[i].mp = new Fsprite({canvas: $.panel[i].el});
-				$.panel[i].mp.set_x_y( $.data.UI.panel.mpx, $.data.UI.panel.mpy);
-				$.panel[i].mp.set_w_h( $.data.UI.panel.mpw, $.data.UI.panel.mph);
-				$.panel[i].mp.el.style.background = $.data.UI.panel.mp_bright;
+				$.panel[i].spic = spic;
+				$.panel[i].hp_bound = new Fsprite({canvas: util.div('panel')});
+				$.panel[i].hp_bound.set_x_y( X+$.data.UI.data.panel.hpx, Y+$.data.UI.data.panel.hpy);
+				$.panel[i].hp_bound.set_w_h( $.data.UI.data.panel.hpw, $.data.UI.data.panel.hph);
+				$.panel[i].hp_bound.el.style.background = $.data.UI.data.panel.hp_dark;
+				$.panel[i].hp = new Fsprite({canvas: util.div('panel')});
+				$.panel[i].hp.set_x_y( X+$.data.UI.data.panel.hpx, Y+$.data.UI.data.panel.hpy);
+				$.panel[i].hp.set_w_h( $.data.UI.data.panel.hpw, $.data.UI.data.panel.hph);
+				$.panel[i].hp.el.style.background = $.data.UI.data.panel.hp_bright;
+				$.panel[i].mp_bound = new Fsprite({canvas: util.div('panel')});
+				$.panel[i].mp_bound.set_x_y( X+$.data.UI.data.panel.mpx, Y+$.data.UI.data.panel.mpy);
+				$.panel[i].mp_bound.set_w_h( $.data.UI.data.panel.mpw, $.data.UI.data.panel.mph);
+				$.panel[i].mp_bound.el.style.background = $.data.UI.data.panel.mp_dark;
+				$.panel[i].mp = new Fsprite({canvas: util.div('panel')});
+				$.panel[i].mp.set_x_y( X+$.data.UI.data.panel.mpx, Y+$.data.UI.data.panel.mpy);
+				$.panel[i].mp.set_w_h( $.data.UI.data.panel.mpw, $.data.UI.data.panel.mph);
+				$.panel[i].mp.el.style.background = $.data.UI.data.panel.mp_bright;
 			}
 		}
 	}
@@ -7795,13 +8119,13 @@ Global)
 			if( $.panel[i].uid!==undefined)
 			{
 				var ch = $.character[$.panel[i].uid],
-					hp = Math.floor(ch.health.hp/ch.health.hp_full*$.data.UI.panel.hpw);
-					hp_bound = Math.floor(ch.health.hp_bound/ch.health.hp_full*$.data.UI.panel.hpw);
+					hp = Math.floor(ch.health.hp/ch.health.hp_full*$.data.UI.data.panel.hpw);
+					hp_bound = Math.floor(ch.health.hp_bound/ch.health.hp_full*$.data.UI.data.panel.hpw);
 				if( hp<0) hp=0;
 				if( hp_bound<0) hp_bound=0;
 				$.panel[i].hp.set_w(hp);
 				$.panel[i].hp_bound.set_w(hp_bound);
-				$.panel[i].mp.set_w(Math.floor(ch.health.mp/ch.health.mp_full*$.data.UI.panel.mpw));
+				$.panel[i].mp.set_w(Math.floor(ch.health.mp/ch.health.mp_full*$.data.UI.data.panel.mpw));
 			}
 		}
 	}
@@ -7888,21 +8212,18 @@ Global)
 		return this.randomseed.next();
 	}
 
-	match.prototype.create_controller=function(allow)
+	match.prototype.create_controller=function(funcon)
 	{
 		var $=this;
 		function show_pause()
 		{
+			if( !$) return;
 			if( $.time.paused)
 				$.pause_mess.show();
 		}
-		if( allow==='debug')
+		if( funcon)
 		{
-			var funkey_config =
-			{
-				'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6','F7':'F7','F8':'F8','F9':'F9','F10':'F10'
-			};
-			var Fcon = new Fcontroller(funkey_config);
+			var Fcon = funcon;
 			Fcon.child.push ({
 				key: function(I,down)
 				{
@@ -7923,6 +8244,12 @@ Global)
 								else
 									$.time.paused=true;
 							break;
+							
+							case 'F4':
+								$.destroy();
+								$.manager.match_end();
+							break;
+
 							case 'F7':
 								$.F7();
 							break;
@@ -7930,7 +8257,7 @@ Global)
 						if( $.time.paused)
 						{
 							$.pause_mess.hide();
-							setTimeout(show_pause,2); //so that the 'pause' message blinks
+							setTimeout(show_pause,4); //so that the 'pause' message blinks
 						}
 						else
 							$.pause_mess.hide();
@@ -8221,6 +8548,7 @@ define('LF/touchcontroller',['LF/util'],function(util)
 	TC.prototype.flush=function()
 	{
 	}
+	TC.prototype.type = 'touch';
 
 	return TC;
 });
@@ -8228,7 +8556,7 @@ define('F.core/css!LF/application.css', ['F.core/css-embed'],
 function(embed)
 {
 	embed(
-	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:10;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  z-index:1000;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus, .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; }'
+	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:100;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus {  position:absolute;  left:0; top:106px;  width:100%; height:22px;  line-height:22px;  background:#000;  z-index:3; } .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; } .characterSelection {  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:10; } .characterSelectionTextBox {  font-family:Helvetica,sans;  font-weight:bold;  font-size:13px;  color:#FFF;  text-align:center;     -moz-transition:color 0.1s;     -webkit-transition:color 0.1s;     -o-transition:color 0.1s;     transition:color 0.1s; }'
 	);
 	return true;
 });
@@ -8246,9 +8574,11 @@ requirejs.config(
 
 requirejs(['F.core/controller','F.core/sprite','F.core/support',
 'LF/loader!packages','LF/match','LF/keychanger','LF/touchcontroller',
+'F.core/sprite','F.core/animator','F.core/util',
 'LF/util','LF/global','F.core/css!LF/application.css'],
 function(Fcontroller,Fsprite,Fsupport,
 package,Match,Keychanger,touchcontroller,
+Fsprite,Fanimator,Futil,
 util,global){
 
 	if (typeof console === "undefined"){
@@ -8315,7 +8645,7 @@ util,global){
 				UI_state.maximized=true;
 				this.firstChild.innerHTML='&#9724;';
 				if( util.div('backgroundScroll'))
-					util.div('backgroundScroll').style.display='none';
+					hide(util.div('backgroundScroll'));
 				document.body.style.background='#888';
 				resizer();
 			}
@@ -8323,14 +8653,14 @@ util,global){
 			{
 				this.firstChild.innerHTML='&#9723;';
 				if( util.div('backgroundScroll'))
-					util.div('backgroundScroll').style.display='';
+					show(util.div('backgroundScroll'));
 				document.body.style.background='';
 				resizer(1);
 				UI_state.maximized=false;
 			}
 		}
 	}
-	util.div('wideWindowButton').style.display='none';
+	hide(util.div('wideWindowButton'));
 	util.div('wideWindowButton').onclick=function()
 	{
 		if( !UI_state.wide)
@@ -8423,57 +8753,377 @@ util,global){
 	//
 	// F.LF stuff
 	//
-	var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
+
+	//setup resource map
 	util.setup_resourcemap(package,Fsprite);
 
-	var control1 = new Fcontroller(control_con1);
-	var control2;
+	//controllers
+	var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
+	var control0 = new Fcontroller(control_con1);
+	var control1;
 	if( !support_touch)
-		control2 = new Fcontroller(control_con2);
+		control1 = new Fcontroller(control_con2);
 	else
-		control2 = new touchcontroller();
-	control1.sync=true;
-	control2.sync=true;
+		control1 = new touchcontroller();
+	var funcon_config =
+	{
+		'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6','F7':'F7','F8':'F8','F9':'F9','F10':'F10'
+	};
+	var funcon = new Fcontroller(funcon_config);
 
+	//key changer
 	var keychanger = util.div('keychanger');
-	keychanger.style.display='none';
-	Keychanger(keychanger, [control1, control2]);
+	hide(keychanger);
+	Keychanger(keychanger, [control0, control1]);
 	keychanger.style.backgroundColor='#FFF';
 	util.div('keychangerButton').onclick=function()
 	{
-		keychanger.style.display= keychanger.style.display===''?'none':'';
+		show_hide(keychanger);
 	}
 
-	var match = new Match
-	({
-		stage: util.div('floor'),
-		state: null,
-		config: null,
-		package: package
-	});
+	//util
+	function hide(div)
+	{
+		div.style.display='none';
+	}
+	function show(div)
+	{
+		div.style.display='';
+	}
+	function show_hide(div)
+	{
+		div.style.display= div.style.display===''?'none':'';
+	}
 
-	match.create
-	({
-		player:
-		[
-			{
-				controller: control1,
-				id: 11,
-				team: 1
-			},
-			{
-				controller: control2,
-				id: 1,
-				team: 2
-			}
-		],
-		control: 'debug',
-		set:
+	var manager = new Manager();
+	manager.create();
+
+	function Manager()
+	{
+		var sel = package.data.UI.data.character_selection;
+		this.t = 0;
+		this.step = 0;
+		this.setting_computer = -1;
+		this.frame=function()
 		{
-			weapon: true
-		},
-		background: {id:1}
-	});
+			for( var i in this.player)
+			{
+				switch (this.player[i].step)
+				{
+					case 0:
+						this.player[i].waiting.next_frame();
+						this.player[i].textbox[0].style.color = sel.text.color[this.t%2];
+					break;
+					case 1:
+						this.player[i].textbox[1].style.color = sel.text.color[this.t%2];
+					break;
+					case 2:
+						this.player[i].textbox[2].style.color = sel.text.color[this.t%2];
+					break;
+				}
+			}
+			this.t++;
+		}
+		this.create=function()
+		{
+			//prepare
+			this.char_list = util.select_from(package.data.object,{type:'character'});
+			this.img_list = Futil.extract_array(this.char_list,'pic').pic;
+			this.img_list.waiting = sel.waiting.pic;
+
+			//create UI for character selection
+			this.bg = new Fsprite({
+				canvas: util.div('characterSelection'),
+				img: package.data.UI.data.character_selection.pic,
+				wh: 'fit'
+			});
+			this.player = [];
+			for( var i=0; i<2; i++)
+			{
+				//sprite & animator
+				var sp = new Fsprite({
+					canvas: util.div('characterSelection'),
+					img: this.img_list,
+					wh: {x:sel.waiting.w,y:sel.waiting.h}
+				});
+				sp.set_x_y(sel.posx[i],sel.posy[i-i%4]);
+				var ani_config=
+				{
+					x:0, y:0,          //top left margin of the frames
+					w:sel.waiting.w, h:sel.waiting.h,//width, height of a frame
+					gx:2,gy:1,         //define a gx*gy grid of frames
+					tar:sp             //target F_sprite
+				}
+				var ani = new Fanimator(ani_config);
+				//text boxes
+				var textbox = [];
+				for( var j=0; j<3; j++)
+				{
+					var tbc=
+					{
+						canvas: util.div('characterSelection'),
+						wh: {x:sel.text.box_width,y:sel.text.box_height}
+					};
+					var box = new Fsprite(tbc);
+					box.set_x_y(sel.posx[i],sel.posy[i-i%4+j+1]);
+					box.el.classList.add('characterSelectionTextBox');
+					textbox.push(box.el);
+				}
+				//
+				this.player.push({
+					waiting:ani,
+					textbox:textbox,
+					box:sp,
+					selected:i+1,
+					step:0,
+					name:i+1,
+					team:i+1,
+					type:'human'
+				});
+				this.show_step(i);
+			}
+			//create UI for gameplay
+			if( util.div('pauseMessage'))
+			{
+				this.pause_mess = new Fsprite({
+					div: util.div('pauseMessage'),
+					img: package.data.UI.data.pause,
+					wh: 'fit'
+				});
+				this.pause_mess.hide();
+			}
+			if( util.div('panel'))
+			{
+				this.panel=[];
+				for( var i=0; i<8; i++)
+				{
+					var pane = new Fsprite({
+						canvas: util.div('panel'),
+						img: package.data.UI.data.panel.pic,
+						wh: 'fit'
+					});
+					pane.set_x_y(package.data.UI.data.panel.pane_width*(i%4), package.data.UI.data.panel.pane_height*Math.floor(i/4));
+					this.panel.push(pane);
+				}
+			}
+			//
+			this.match_end();
+			this.start_match();
+		}
+		this.key=function(i,key)
+		{
+			if( key==='att')
+			{
+				if( this.step===0)
+				{
+					this.player[i].type='human';
+					this.player[i].step++;
+				}
+				else if( this.step===1)
+				{
+					if( this.player[i].type!=='human')
+						return;
+					i = this.setting_computer;
+					this.player[i].step++;
+				}
+
+				var finished=true;
+				for( var k=0; k<this.player.length; k++)
+					finished = finished && (this.player[k].step===0||this.player[k].step===3);
+				if( finished && this.step===0)
+				{
+					if( this.player[0].step===3 && this.player[1].step===3)
+					{
+						this.start_match();
+					}
+					else
+					{
+						this.setting_computer = (this.player[0].step===3?1:0);
+						i = this.setting_computer;
+						this.player[i].step = 1;
+						this.player[i].type = 'computer';
+						this.player[i].AI = package.data.AI[0].data;
+						this.player[i].name = package.data.AI[0].name;
+						this.step++;
+					}
+				}
+				else if( finished && this.step===1)
+				{
+					if( this.player[0].step===3 && this.player[1].step===3)
+					{
+						this.start_match();
+					}
+				}
+			}
+			if( key==='jump')
+			{
+				if( this.step===1)
+				{
+					if( this.player[i].type!=='human')
+						return;
+					i = this.setting_computer;
+					if( this.player[i].step>1)
+						this.player[i].step--;
+				}
+				if( this.step===0)
+				{
+					if( this.player[i].step>0)
+						this.player[i].step--;
+				}
+			}
+			if( key==='right')
+			{
+				if( this.step===1)
+				{
+					if( this.player[i].type!=='human')
+						return;
+					i = this.setting_computer;
+				}
+				if( this.player[i].step===1)
+					this.player[i].selected++;
+				if( this.player[i].selected>=this.char_list.length)
+					this.player[i].selected = 0;
+			}
+			if( key==='left')
+			{
+				if( this.step===1)
+				{
+					if( this.player[i].type!=='human')
+						return;
+					i = this.setting_computer;
+				}
+				if( this.player[i].step===1)
+					this.player[i].selected--;
+				if( this.player[i].selected<0)
+					this.player[i].selected = this.char_list.length-1;
+			}
+			this.show_step(i);
+		}
+		this.show_step=function(i)
+		{
+			if( this.step===0)
+			{
+				switch (this.player[i].step)
+				{
+					case 0:
+						this.player[i].textbox[0].innerHTML = 'Join?';
+						this.player[i].textbox[1].innerHTML = '';
+						this.player[i].textbox[2].innerHTML = '';
+						this.player[i].box.switch_img('waiting');
+					break;
+					case 1:
+						this.player[i].textbox[0].style.color = sel.text.color[2];
+						this.player[i].textbox[0].innerHTML = this.player[i].name;
+						this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
+						this.player[i].textbox[2].innerHTML = '';
+						this.player[i].waiting.rewind();
+						this.player[i].box.switch_img(this.player[i].selected);
+					break;
+					case 2:
+						this.player[i].textbox[1].style.color = sel.text.color[2];
+						this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
+					break;
+					case 3:
+						this.player[i].textbox[2].style.color = sel.text.color[2];
+					break;
+				}
+			}
+			else if( this.step===1)
+			{
+				i = this.setting_computer;
+				switch (this.player[i].step)
+				{
+					case 1:
+						this.player[i].textbox[0].style.color = sel.text.color[2];
+						this.player[i].textbox[0].innerHTML = this.player[i].name;
+						this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
+						this.player[i].textbox[2].innerHTML = '';
+						this.player[i].waiting.rewind();
+						this.player[i].box.switch_img(this.player[i].selected);
+					break;
+					case 2:
+						this.player[i].textbox[1].style.color = sel.text.color[2];
+						this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
+					break;
+					case 3:
+						this.player[i].textbox[2].style.color = sel.text.color[2];
+					break;
+				}
+			}
+		}
+		this.match_end=function(event)
+		{
+			show(util.div('characterSelection'));
+			hide(util.div('gameplay'));
+
+			//create timer
+			var This=this;
+			this.step = 0;
+			this.seltimer = setInterval(function(){This.frame();},1000/12);
+			//create controller listener
+			control0.sync=false;
+			control1.sync=false;
+			control0.child=[{
+				key:function(K,D){if(D)This.key(0,K);}
+			}];
+			control1.child=[{
+				key:function(K,D){if(D)This.key(1,K);}
+			}];
+			//reset
+			this.step = 0;
+			for( var i=0; i<this.player.length; i++)
+			{
+				this.player[i].step = 0;
+				this.show_step(i);
+			}
+		}
+		this.start_match=function()
+		{
+			hide(util.div('characterSelection'));
+			show(util.div('gameplay'));
+
+			clearInterval(this.seltimer);
+
+			control0.sync=true;
+			control1.sync=true;
+			control0.child=[];
+			control1.child=[];
+			funcon.child=[];
+
+			this.match = new Match
+			({
+				manager: this,
+				stage: util.div('floor'),
+				state: null,
+				config: null,
+				package: package
+			});
+
+			this.match.create
+			({
+				player:
+				[
+					{
+						controller: this.player[0].type==='human'?control0:this.player[0].AI,
+						datanum: this.player[0].selected,
+						team: this.player[0].team
+					},
+					{
+						controller: this.player[1].type==='human'?control1:this.player[1].AI,
+						datanum: this.player[1].selected,
+						team: this.player[1].team
+					}
+				],
+				control: funcon,
+				set:
+				{
+					weapon: true
+				},
+				background: {id:1},
+				pause_mess: this.pause_mess
+			});
+		}
+	}
 
 });
 
