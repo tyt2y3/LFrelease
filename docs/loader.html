@@ -24,13 +24,43 @@ requirejs(['LF/loader!anystring'],function(){...});
 	"LF2 1.451": { path:"LFrelease/LF2_19" }
 }
 ```
-(unimplemented) if there are multiple packages, let the user choose which to load
+(suggestion) if there are multiple packages, let the user choose which to load
 
 #### 2 load package
-`manifest.js` under the package directory is loaded and checked against the schema.
+`manifest.js` under the package directory is loaded and checked against the schema:
+
+```
+{
+	"data":"string/url-js",
+	"resourcemap":"string/url-js!optional"
+}
+```
 
 #### 2.1 load data
 load the specified data list, typically named `data.js`.
+
+##### data loading
+in `data.js` every object that has a `file` property will have the file loaded, which the file must be a valid [javascript data file](package.html#data_file_format) with a `.js` extension. the file path is relative to the root of the package. When the file is loaded, the data itself will be appended to the original object. for example:
+```
+/*before*/
+data.js:
+{
+	object:
+	[
+		{id:1, type:'character', file:'path/to/hero.js'},
+		...
+	]
+}
+/*after*/
+returned data:
+{
+	object:
+	[
+		{id:1, type:'character', file:'path/to/hero.js', data:{/*content of hero.js appears here*/}},
+		...
+	]
+}
+```
 
 ##### lazy loading
 if global.lazyload is defined, a function `load()` is inserted to `package.data.object` 
@@ -55,12 +85,16 @@ function ()
 });
 ```
 
-in the scenario of F.LF, character data files are not loaded during startup, and are only being loaded when a match starts, only if that characters are being selected.
+##### F.LF lazy loading scheme
+in the scenario of F.LF, character data files are not loaded during startup, and are only being loaded when a match starts, only if that characters are being selected. note, as defined by `global.lazyload`:
+```
+delay loading of all character prefixed files. consider,
+{id: 1, type:'character', file:'data/deep.js'},
+{id:203, type:'specialattack', file:'data/deep_ball.js'}
+as `deep.js` is of type character, any files matching `deep_*` will also be lazy loaded
+```
 
-#### 2.2 load properties
-load the specified properties file, typically named `properties.js`.
-
-#### 2.3 load resourcemap
+#### 2.2 load resourcemap
 if defined, load the specified resourcemap, typically named `resourcemap.js`.
 
 #### return
@@ -79,10 +113,6 @@ package:
 		],
 		...
 	}
-	properties:
-	{
-		...
-	},
 	resourcemap:
 	{
 		...
@@ -90,10 +120,6 @@ package:
 	location: '../../LFrelease/LF2_19/' //location of the package relative to the html file
 }
 ```
-
-## todo
-
-support loading packages from a remote location
 </xmp>
 
 <script src="projectfdocs.js"></script>
