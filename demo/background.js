@@ -1244,10 +1244,10 @@ sprite.prototype.draw_to_canvas=function(canvas)
 \*/
 sprite.prototype.remove=function()
 {
-	if( !this.removed)
+	if( !this.removed && this.el.parentNode)
 	{
+		this.removed = this.el.parentNode;
 		this.el.parentNode.removeChild(this.el);
-		this.removed=true;
 	}
 }
 /*\
@@ -1259,7 +1259,10 @@ sprite.prototype.remove=function()
 sprite.prototype.attach=function()
 {
 	if( this.removed)
-		config.canvas.appendChild(this.el);
+	{
+		this.removed.appendChild(this.el);
+		this.removed = null;
+	}
 }
 /*\
  * sprite.hide
@@ -1927,6 +1930,8 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 	background.prototype.destroy=function()
 	{
 		var $=this;
+		if( $.name==='empty background')
+			return;
 		if ( $.layers)
 		for( var i=1; i<$.layers.length; i++) //starts from 1, because layers[0] is floor
 			$.layers[i].sp.remove();

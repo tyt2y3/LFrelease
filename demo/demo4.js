@@ -1586,10 +1586,10 @@ sprite.prototype.draw_to_canvas=function(canvas)
 \*/
 sprite.prototype.remove=function()
 {
-	if( !this.removed)
+	if( !this.removed && this.el.parentNode)
 	{
+		this.removed = this.el.parentNode;
 		this.el.parentNode.removeChild(this.el);
-		this.removed=true;
 	}
 }
 /*\
@@ -1601,7 +1601,10 @@ sprite.prototype.remove=function()
 sprite.prototype.attach=function()
 {
 	if( this.removed)
-		config.canvas.appendChild(this.el);
+	{
+		this.removed.appendChild(this.el);
+		this.removed = null;
+	}
 }
 /*\
  * sprite.hide
@@ -5009,8 +5012,10 @@ function(livingobject, Global, Fcombodec, Futil, util)
 							$.trans.frame(100);
 						else
 							$.trans.frame(108);
-						$.ps.vx = 5; //magic number
-						if( $.ps.vz) $.ps.vz = 2;
+						if( $.ps.vx)
+							$.ps.vx = 5*($.ps.vx>0?1:-1); //magic number
+						if( $.ps.vz)
+							$.ps.vz = 2*($.ps.vz>0?1:-1); //magic number
 						return 1;
 					}
 				}
@@ -7553,6 +7558,8 @@ define('LF/background',['F.core/util','F.core/sprite','F.core/support','LF/globa
 	background.prototype.destroy=function()
 	{
 		var $=this;
+		if( $.name==='empty background')
+			return;
 		if ( $.layers)
 		for( var i=1; i<$.layers.length; i++) //starts from 1, because layers[0] is floor
 			$.layers[i].sp.remove();
@@ -7838,7 +7845,8 @@ Global)
 		$.create_background(setting.background);
 		$.panel=[]; for( var i=0; i<8; i++) $.panel[i]={};
 		$.pause_mess = setting.pause_mess;
-		$.pause_mess.hide();
+		if( $.pause_mess)
+			$.pause_mess.hide();
 		$.tasks = []; //pending tasks
 		$.AIscript = [];
 
@@ -7878,6 +7886,7 @@ Global)
 		for (var i in divs)
 		{
 			var e = util.div(divs[i]);
+			if( e)
 			while (e.lastChild)
 				e.removeChild(e.lastChild);
 		}
@@ -7965,8 +7974,10 @@ Global)
 		$.background.TU();
 		if( $.panel)
 			$.show_hp();
-		for( var i=0; i<$.AIscript.length; i++)
-			$.AIscript[i].TU();
+		//AI script runs at a lower framerate, and is still very reactive
+		if( $.time.t%2===0)
+			for( var i=0; i<$.AIscript.length; i++)
+				$.AIscript[i].TU();
 	}
 
 	match.prototype.match_event=function(E)
