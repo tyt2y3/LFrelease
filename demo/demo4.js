@@ -1,4 +1,1258 @@
 
+define('F.core/support',[],function()
+{
+	var support = {};
+	/*\
+	 * support
+	 * test for browser support of certain technologies, most code is adapted from other places.
+	 * including
+	 * - [http://davidwalsh.name/vendor-prefix](http://davidwalsh.name/vendor-prefix)
+	 * - [https://gist.github.com/3626934](https://gist.github.com/3626934)
+	 * - [https://gist.github.com/1579671](https://gist.github.com/3626934)
+	 * [example](../sample/support.html)
+	 # <iframe src="../sample/support.html" width="800" height="200"></iframe>
+	\*/
+	/*\
+	 * support.browser
+	 - (number) browser name
+	 [ property ]
+	\*/
+	/*\
+	 * support.browser_name
+	 - (number) browser name
+	 [ property ]
+	\*/
+	/*\
+	 * support.browser_version
+	 - (number) browser version string
+	 [ property ]
+	\*/
+	/*\
+	 * support.mobile
+	 - (string) mobile device name, undefined if not on a mobile device
+	 [ property ]
+	\*/
+	/*\
+	 * support.prefix
+	 - (string) browser prefix
+	 [ property ]
+	\*/
+	/*\
+	 * support.prefix_dom
+	 - (string) browser prefix for DOM
+	 [ property ]
+	\*/
+	/*\
+	 * support.prefix_css
+	 - (string) browser prefix for css
+	 [ property ]
+	\*/
+	/*\
+	 * support.prefix_js
+	 - (string) browser prefix for js
+	 [ property ]
+	\*/
+	/*\
+	 * support.css2dtransform
+	 - (string) if supported, style property name with correct prefix
+	 [ property ]
+	 * you can do something like
+	 | if( support.css2dtransform)
+	 |		element.style[support.css2dtransform]= 'translate('+P.x+'px,'+P.y+'px) ';
+	\*/
+	/*\
+	 * support.css3dtransform
+	 - (string) if supported, style property name with correct prefix
+	 [ property ]
+	 | if( support.css3dtransform)
+	 | 	this.el.style[support.css3dtransform]= 'translate3d('+P.x+'px,'+P.y+'px, 0px) ';
+	\*/
+	/*\
+	 * support.localStorage
+	 - (object) similar functionality as `window.localStorage`
+	 * if `window.localStorage` is not supported, will create a shim that emulates `window.localStorage` using cookie. the methods `clear`, `getItem`, `key`, `removeItem`, `setItem` and property `length` are available, but the dot or array notation does not work. for example, the following does **not** work
+	 | window.localStorage.someProperty = 2;
+	 | window.localStorage['someProperty'] = 2;
+	 * instead, use the following:
+	 | support.localStorage.setItem('someProperty', 2);
+	 * Ideally, all HTML5 browsers should support localStorage. The only problem is localStorage does not work in IE10 in protected mode for offline files.
+	 [ property ]
+	\*/
+	/*\
+	 * support.sessionStorage
+	 - (object) similar functionality as `window.sessionStorage`
+	 [ property ]
+	\*/
+
+	//test for browser and device
+	(function(){		
+		var N= navigator.appName, ua= navigator.userAgent, tem;
+		var M= ua.match(/(opera|chrome|safari|firefox|msie)\/?\s*(\.?\d+(\.\d+)*)/i);
+		if(M && (tem= ua.match(/version\/([\.\d]+)/i))!= null) M[2]= tem[1];
+		M= M? [M[1], M[2]]: [N, navigator.appVersion,'-?'];
+		support.browser = M[0];
+		support.browser_name = M[0];
+		support.browser_version = M[1];
+		var mobile = /iPad|iPod|iPhone|Android|webOS|IEMobile/i.exec(navigator.userAgent.toLowerCase());
+		support.mobile= mobile?mobile[0]:undefined;
+		//[--adapted from http://davidwalsh.name/vendor-prefix
+		var styles = window.getComputedStyle(document.documentElement, ''),
+			pre = (Array.prototype.slice
+				.call(styles)
+				.join('') 
+				.match(/-(moz|webkit|ms)-/) || (styles.OLink === '' && ['', 'o'])
+				)[1],
+			dom = ('WebKit|Moz|MS|O').match(new RegExp('(' + pre + ')', 'i'))[1];
+		support.prefix = dom;
+		support.prefix_dom = dom;
+		support.prefix_css = '-'+pre+'-';
+		support.prefix_js = pre[0].toUpperCase() + pre.substr(1);
+		//--]
+	}());
+
+	//test for css 2d transform support
+	//[--adapted from https://gist.github.com/3626934
+	(function(){
+
+		var el = document.createElement('p'), t, has3d;
+		var transforms = {
+			'WebkitTransform':'-webkit-transform',
+			'OTransform':'-o-transform',
+			'MSTransform':'-ms-transform',
+			'MozTransform':'-moz-transform',
+			'transform':'transform'
+		};
+
+		/* Add it to the body to get the computed style.*/
+		document.getElementsByTagName('body')[0].appendChild(el);
+
+		for(t in transforms)
+		{
+			if( el.style[t] !== undefined )
+			{
+				var str;
+				str = 'matrix(1, 0, 0, 1, 0, 0)';
+				el.style[t] = str;
+				if( str===window.getComputedStyle(el).getPropertyValue( transforms[t] ))
+					support.css2dtransform= t;
+
+				str = 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1)'
+				el.style[t] = str;
+				//if( str===window.getComputedStyle(el).getPropertyValue( transforms[t] ))
+				if( window.getComputedStyle(el).getPropertyValue( transforms[t] ).indexOf('matrix3d')===0)
+					support.css3dtransform= t;
+			}
+		}
+
+		el.parentNode.removeChild(el);
+	}());
+	//--] end
+
+	/// because IE9/10 has no localstorage on local file
+	// Storage polyfill by Remy Sharp
+	// [--
+	// https://github.com/inexorabletash/polyfill/blob/master/storage.js
+	// https://gist.github.com/350433
+	// Tweaks by Joshua Bell (inexorabletash@gmail.com)
+	if (!window.localStorage || !window.sessionStorage) (function() {
+
+		var Storage = function(type) {
+			function createCookie(name, value, days) {
+				var date, expires;
+
+				if (days) {
+					date = new Date();
+					date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+					expires = "; expires=" + date.toGMTString();
+				} else {
+					expires = "";
+				}
+				document.cookie = name + "=" + value + expires + "; path=/";
+			}
+
+			function readCookie(name) {
+				var nameEQ = name + "=",
+					ca = document.cookie.split(';'),
+					i, c;
+
+				for (i = 0; i < ca.length; i++) {
+					c = ca[i];
+					while (c.charAt(0) == ' ') {
+						c = c.substring(1, c.length);
+					}
+
+					if (c.indexOf(nameEQ) == 0) {
+						return c.substring(nameEQ.length, c.length);
+					}
+				}
+				return null;
+			}
+
+			function setData(data) {
+				data = JSON.stringify(data);
+				if (type == 'session') {
+					window.name = data;
+				} else {
+					createCookie('localStorage', data, 365);
+				}
+			}
+
+			function clearData() {
+				if (type == 'session') {
+					window.name = '';
+				} else {
+					createCookie('localStorage', '', 365);
+				}
+			}
+
+			function getData() {
+				var data = type == 'session' ? window.name : readCookie('localStorage');
+				return data ? JSON.parse(data) : {};
+			}
+
+
+			// initialise if there's already data
+			var data = getData();
+
+			function numKeys() {
+				var n = 0;
+				for (var k in data) {
+					if (data.hasOwnProperty(k)) {
+						n += 1;
+					}
+				}
+				return n;
+			}
+
+			return {
+				clear: function() {
+					data = {};
+					clearData();
+					this.length = numKeys();
+				},
+				getItem: function(key) {
+					key = encodeURIComponent(key);
+					return data[key] === undefined ? null : data[key];
+				},
+				key: function(i) {
+					// not perfect, but works
+					var ctr = 0;
+					for (var k in data) {
+						if (ctr == i) return decodeURIComponent(k);
+						else ctr++;
+					}
+					return null;
+				},
+				removeItem: function(key) {
+					key = encodeURIComponent(key);
+					delete data[key];
+					setData(data);
+					this.length = numKeys();
+				},
+				setItem: function(key, value) {
+					key = encodeURIComponent(key);
+					data[key] = String(value);
+					setData(data);
+					this.length = numKeys();
+				},
+				length: 0
+			};
+		};
+
+		if (!window.localStorage) support.localStorage = new Storage('local');
+		if (!window.sessionStorage) support.sessionStorage = new Storage('session');
+
+	}());
+	else
+	{
+		support.localStorage = window.localStorage;
+		support.sessionStorage = window.sessionStorage;
+	}
+	//--]
+
+	/// because IE9 has no classList
+	//classList shim by eligrey
+	/*! @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js*/
+	if("document" in self&&!("classList" in document.createElement("_")&&"classList" in document.createElementNS("http://www.w3.org/2000/svg","svg"))){(function(j){if(!("Element" in j)){return}var a="classList",f="prototype",m=j.Element[f],b=Object,k=String[f].trim||function(){return this.replace(/^\s+|\s+$/g,"")},c=Array[f].indexOf||function(q){var p=0,o=this.length;for(;p<o;p++){if(p in this&&this[p]===q){return p}}return -1},n=function(o,p){this.name=o;this.code=DOMException[o];this.message=p},g=function(p,o){if(o===""){throw new n("SYNTAX_ERR","An invalid or illegal string was specified")}if(/\s/.test(o)){throw new n("INVALID_CHARACTER_ERR","String contains an invalid character")}return c.call(p,o)},d=function(s){var r=k.call(s.getAttribute("class")),q=r?r.split(/\s+/):[],p=0,o=q.length;for(;p<o;p++){this.push(q[p])}this._updateClassName=function(){s.setAttribute("class",this.toString())}},e=d[f]=[],i=function(){return new d(this)};n[f]=Error[f];e.item=function(o){return this[o]||null};e.contains=function(o){o+="";return g(this,o)!==-1};e.add=function(){var s=arguments,r=0,p=s.length,q,o=false;do{q=s[r]+"";if(g(this,q)===-1){this.push(q);o=true}}while(++r<p);if(o){this._updateClassName()}};e.remove=function(){var t=arguments,s=0,p=t.length,r,o=false;do{r=t[s]+"";var q=g(this,r);if(q!==-1){this.splice(q,1);o=true}}while(++s<p);if(o){this._updateClassName()}};e.toggle=function(p,q){p+="";var o=this.contains(p),r=o?q!==true&&"remove":q!==false&&"add";if(r){this[r](p)}return !o};e.toString=function(){return this.join(" ")};if(b.defineProperty){var l={get:i,enumerable:true,configurable:true};try{b.defineProperty(m,a,l)}catch(h){if(h.number===-2146823252){l.enumerable=false;b.defineProperty(m,a,l)}}}else{if(b[f].__defineGetter__){m.__defineGetter__(a,i)}}}(self))};
+
+	return support;
+});
+
+/*\
+ * packages.js
+ * 
+ * packages.js lists the available content packages
+\*/
+define('LF/packages',{
+	//"package name": { path:"path/to/package" }
+	"LF2 1.451": { path:"LFrelease/LF2_19" }
+});
+
+/*\
+ * util.js
+ * utilities for F.LF
+\*/
+
+define('LF/util',[],function(){
+
+if (typeof console==='undefined')
+{	//polyfill for IE, this is just for precaution
+	// we should not use console.log in production anyway unless for fatal error
+    console={};
+    console.log = function(){}
+}
+
+var util={};
+
+util.select_from=function(from,where,option)
+{
+	var res=[];
+	for( var i in from)
+	{
+		var O=from[i];
+		var match=true;
+		if( typeof where==='function')
+		{
+			if( !where(O))
+				match=false;
+		}
+		else
+			for( var j in where)
+			{
+				if( O[j]!==where[j])
+					match=false;
+			}
+		if( match)
+			res.push(O);
+	}
+	if( res.length===0)
+		return ;
+	else if( res.length===1)
+		return res[0];
+	else
+		return res;
+}
+
+util.lookup=function(A,x)
+{
+	for( var i in A)
+	{
+		if( x<=i)
+			return A[i];
+	}
+}
+
+util.lookup_abs=function(A,x)
+{
+	if( x<0) x=-x;
+	for( var i in A)
+	{
+		if( x<=i)
+			return A[i];
+	}
+}
+
+util.shallow_copy=function(A)
+{
+	var B={};
+	for( var i in A)
+		B[i] = A[i];
+	return B;
+}
+
+util.div=function(classname)
+{
+	if( !util.container)
+	{
+		util.container = document.getElementsByClassName('LFcontainer')[0];
+		if( !util.container) return null;
+	}
+	if( !classname) return util.container;
+	return util.container.getElementsByClassName(classname)[0];
+}
+
+util.filename=function(file)
+{
+	if( file.lastIndexOf('/')!==-1)
+		file = file.slice(file.lastIndexOf('/')+1);
+	if( file.lastIndexOf('.js')!==-1)
+		file = file.slice(0,file.lastIndexOf('.js'));
+	return file;
+}
+
+/**
+The resourcemap specified by F.core allows putting a js function as a condition checker.
+This is considered insecure in F.LF. thus F.LF only allows simple predefined condition checking.
+*/
+util.setup_resourcemap=function(package,Fsprite)
+{
+	var has_resmap=false;
+	if( package.resourcemap)
+	if( typeof package.resourcemap.condition==='string')
+	{
+		var cond = package.resourcemap.condition.split(' ');
+		if( cond[0]==='location' && cond[1]==='contain' &&
+			cond[2] && cond[3]==='at' && cond[4])
+		{
+			cond[4]=parseInt(cond[4]);
+			package.resourcemap.condition = function()
+			{
+				return window.location.href.indexOf(cond[2])===cond[4];
+			}
+		}
+		else if( cond[0]==='location' && cond[1]==='contain' && cond[2])
+		{
+			package.resourcemap.condition = function()
+			{
+				return window.location.href.indexOf(cond[2])!==-1;
+			}
+		}
+
+		if( typeof package.resourcemap.condition==='function')
+		{
+			var resmap = [
+				package.resourcemap, //package-defined resourcemap
+				{	//default resourcemap
+					get: function(res)
+					{
+						return package.location+res;
+					}
+				}
+			];
+			Fsprite.masterconfig_set('resourcemap',resmap);
+			has_resmap=true;
+		}
+	}
+	if( !has_resmap)
+		Fsprite.masterconfig_set('baseUrl',package.location);
+}
+
+//return the parameters passed by location
+util.location_parameters=function()
+{
+	var param = window.location.href.split('/').pop();
+	if( param.indexOf('?')!==-1)
+	{
+		var param = param.split('?').pop().split('&');
+		for( var i=0; i<param.length; i++)
+			param[i] = param[i].split('=');
+		return param;
+	}
+}
+
+return util;
+});
+
+/*\
+ * global.js
+ * 
+ * global constants of a game
+ * 
+ * note to data changers: tweak entries in this file very carefully. do not add or delete entries.
+\*/
+define('LF/global',['LF/util'],function(util)
+{
+
+var G={};
+
+G.application={};
+var GA = G.application;
+GA.window={};
+GA.window.width=794;
+GA.window.height=550;
+GA.viewer={};
+GA.viewer.height=400;
+GA.camera={};
+GA.camera.speed_factor=1/18;
+
+/*\
+ * global.combo_list
+ [ property ]
+ * list of combos
+ | { name:'DvA', seq:['def','down','att']} //example
+\*/
+G.combo_list = [
+	{ name:'D<A', seq:['def','left','att'], clear_on_combo:false},
+	{ name:'D>A', seq:['def','right','att'], clear_on_combo:false},
+	{ name:'DvA', seq:['def','down','att']},
+	{ name:'D^A', seq:['def','up','att']},
+	{ name:'DvJ', seq:['def','down','jump']},
+	{ name:'D^J', seq:['def','up','jump']},
+	{ name:'D<J', seq:['def','left','jump']},
+	{ name:'D>J', seq:['def','right','jump']},
+	{ name:'D<AJ', seq:['def','left','att','jump']},
+	{ name:'D>AJ', seq:['def','right','att','jump']},
+	{ name:'DJA', seq:['def','jump','att']}
+];
+G.combo_tag =
+{	//look up from combo name to tag name
+	'def':'hit_d',
+	'jump':'hit_j',
+	'att':'hit_a',
+	'D>A':'hit_Fa',
+	'D<A':'hit_Fa',
+	'DvA':'hit_Da',
+	'D^A':'hit_Ua',
+	'DvJ':'hit_Dj',
+	'D^J':'hit_Uj',
+	'D>J':'hit_Fj',
+	'D<J':'hit_Fj',
+	'D<AJ':'hit_Fj',
+	'D>AJ':'hit_Fj',
+	'DJA':'hit_ja'
+};
+G.combo_priority =
+{	//larger number is higher priority
+	'up':0,'down':0,'left':0,'right':0,'def':0,'jump':0,'att':0,'run':0,
+	'D>A':1, 'D<A':1, 'DvA':1, 'D^A':1,
+	'DvJ':1, 'D^J':1, 'D>J':1, 'D<J':1, 'D<AJ':1, 'D>AJ':1, 'DJA':1
+};
+
+G.lazyload = function(O) //return true to delay loading of data files
+{
+	if( !this.character_list)
+		this.character_list={};
+	if( O.type==='character')
+	{
+		var file = util.filename(O.file);
+		this.character_list[file] = true;
+		return true; //delay loading of all character files
+	}
+	else if( O.type)
+	{
+		var file = util.filename(O.file);
+		if( file.lastIndexOf('_')!==-1)
+			file = file.slice(0,file.lastIndexOf('_'));
+		/** delay loading of all character prefixed files. consider,
+			{id: 1, type:'character', file:'data/deep.js'},
+			{id:203, type:'specialattack', file:'data/deep_ball.js'}
+			as `deep.js` is of type character, any files matching `deep_*` will also be lazy loaded
+		*/
+		if( this.character_list[file])
+			return true;
+	}
+	return false;
+};
+
+G.gameplay={};
+var GC = G.gameplay;
+
+/*\
+ * global.gameplay.default
+ [ property ]
+ * What are the defaults?
+ * 
+ * default means `otherwise specified`. all defaults get overridden, and (mostly) you can set the specific property in data files. so it might not be meaningful to change default values.
+ * if any of them cannot be overridden, please move them out of default.
+\*/
+GC.default={};
+GC.default.health={};
+GC.default.health.hp_full=500;
+GC.default.health.mp_full=500;
+GC.default.health.mp_start=200; //it cannot be overriden
+
+GC.default.itr={};
+GC.default.itr.zwidth= 12; //default itr zwidth
+GC.default.itr.hit_stop= 3; //default stall when hit somebody
+GC.default.itr.throw_injury= 10;
+
+GC.default.cpoint={};
+GC.default.cpoint.hurtable= 0; //default cpoint hurtable
+GC.default.cpoint.cover= 0; //default cpoint cover
+GC.default.cpoint.vaction= 135; //default frame being thrown
+
+GC.default.wpoint={};
+GC.default.wpoint.cover= 0;
+
+GC.default.effect={};
+GC.default.effect.num= 0; //default effect num
+
+GC.default.fall={};
+GC.default.fall.value= 20; //default fall
+GC.default.fall.dvy= -6.9; //default dvy when falling
+
+GC.default.weapon={};
+GC.default.weapon.vrest= 9; //default weapon vrest
+
+GC.default.character={};
+GC.default.character.arest= 7; //default character arest
+
+GC.default.machanics={};
+GC.default.machanics.mass= 1; //default mass; weight = mass * gravity
+
+/*\
+ * global.gameplay
+ [ property ]
+ * gameplay constants
+ * 
+ * these are defined constants over the game, tweak them carefully otherwise it might introduce bugs
+\*/
+
+GC.recover={};
+GC.recover.fall= -0.45; //fall recover constant
+GC.recover.bdefend= -0.5; //bdefend recover constant
+
+GC.effect={};
+GC.effect.num_to_id= 300; //convert effect num to id
+GC.effect.duration= 3; //default effect lasting duration
+
+GC.character={};
+GC.character.bounceup={}; //bounce up during fall
+GC.character.bounceup.limit={};
+GC.character.bounceup.limit.xy= 13.4; //defined speed threshold to bounce up again
+GC.character.bounceup.limit.y= 11; //y threshold; will bounce if any one of xy,y is overed
+GC.character.bounceup.y= 4.25; //defined bounce up speed
+GC.character.bounceup.absorb= //how much dvx to absorb when bounce up
+{
+	9:1,
+	14:4,
+	20:10,
+	40:20
+}
+
+GC.defend={};
+GC.defend.injury={};
+GC.defend.injury.factor= 0.1; //defined defend injury factor
+GC.defend.break_limit= 40; //defined defend break
+GC.defend.absorb= //how much dvx to absorb when defence is broken
+{	//look up table
+	5:0,
+	15:5
+}
+
+GC.fall={};
+GC.fall.KO= 60; //defined KO
+GC.fall.wait180= //the wait of 180 depends on effect.dvy
+{	//lookup
+	//dvy:wait
+	7:1,
+	9:2,
+	11:3,
+	13:4,
+	15:5,
+	17:6
+}
+
+GC.friction={};
+GC.friction.fell=    //defined friction at the moment of fell onto ground
+{	//a lookup table
+	//speed:friction
+	2:0,
+	3:1,
+	5:2,
+	6:4, //smaller or equal to 6, value is 4
+	9:5,
+	13:7,
+	25:9 //guess entry
+}
+
+GC.min_speed= 1; //defined minimum speed
+
+GC.gravity= 1.7; //defined gravity
+
+GC.weapon={};
+GC.weapon.bounceup={}; //when a weapon falls onto ground
+GC.weapon.bounceup.limit= 8; //defined limit to bounce up again
+GC.weapon.bounceup.speed={};
+GC.weapon.bounceup.speed.y= -3.7; //defined bounce up speed
+GC.weapon.bounceup.speed.x= 3;
+GC.weapon.bounceup.speed.z= 1.5;
+GC.weapon.soft_bounceup={}; //when heavy weapon being hit by character punch
+GC.weapon.soft_bounceup.speed={};
+GC.weapon.soft_bounceup.speed.y= -2;
+
+GC.weapon.hit={}; //when a weapon hit others
+GC.weapon.hit.vx= -3; //absolute speed
+GC.weapon.hit.vy= 0;
+
+//GC.weapon.gain.factor.x= 1.1; //when a weapon is being hit at rest
+//GC.weapon.gain.factor.y= 1.8;
+
+GC.weapon.reverse={}; //when a weapon is being hit while travelling in air
+GC.weapon.reverse.factor={};
+GC.weapon.reverse.factor.vx= -0.4;
+GC.weapon.reverse.factor.vy= -2;
+GC.weapon.reverse.factor.vz= -0.4;
+
+GC.unspecified= -842150451; //0xCDCDCDCD, one kind of HEX label
+
+return G;
+});
+
+/*\
+ * util
+ * javascript utilities
+\*/
+define('F.core/util',[],function(){
+
+var F={
+
+// javascript-----------------
+
+/**	inject a .js file
+	deprecated in favour of the use of head.js, now requirejs
+*/
+/* js: function (filename)
+{
+	var head = document.getElementsByTagName('head')[0];
+	var script = document.createElement('script');
+	script.src = filename;
+	script.type = 'text/javascript';
+	head.appendChild(script);
+}, */
+
+/*\
+ * util.css
+ * attach a stylesheet to page
+ [ method ]
+ - filename (string)
+\*/
+css: function (filename)
+{
+	var head = document.getElementsByTagName('head')[0];
+	var link = document.createElement('link');
+	link.href = filename;
+	link.rel = 'stylesheet';
+	link.type = 'text/css';
+	head.appendChild(link);
+},
+
+/**
+ * util.double_delegate
+ * double delegate a function
+ [ method ]
+ * [reference](http://roberthahn.ca/articles/2007/02/02/how-to-use-window-onload-the-right-way/)
+ */
+double_delegate: function (function1, function2)
+{
+	return function() {
+	if (function1)
+		function1.apply(this,Array.prototype.slice.call(arguments));
+	if (function2)
+		function2.apply(this,Array.prototype.slice.call(arguments));
+	}
+},
+
+/*\
+ * util.make_array
+ [ method ]
+ - target (any)
+ * if target is:
+ - (array) returns target as is.
+ - (object) returns object encapsulated in an array.
+ - (falsy) (null, undefined or zero), returns an empty array.
+\*/
+make_array: function (target)
+{
+	if( target)
+	{
+		if( target instanceof Array)
+			return target;
+		else
+			return [target];
+	}
+	else
+		return [];
+},
+
+//data structure------------
+
+/*\
+ * util.search_array
+ [ method ]
+ - arr (array) target to be searched
+ - fc_criteria (function) return true when an accepted element is passed in
+ - [fc_replace] (function) to return a replacement value when original value is passed in
+ - [search_all] (boolean) if true, will search through entire array before returning the list of indices, otherwise, will return immediately at the first accepted element
+ = (number) index of the found element if `search_all` if false
+ = (array) of (number) if `search_all` is true
+\*/
+search_array: function (arr, fc_criteria, fc_replace, search_all)
+{
+	var found_list=new Array();
+	//for ( var i=0; i<arr.length; i++)
+	for ( var i in arr)
+	{
+		if ( fc_criteria(arr[i],i))
+		{
+			if ( fc_replace) {
+				arr[i] = fc_replace(arr[i]);
+			}
+			if ( !search_all) {
+				return i;
+			} else {
+				found_list.push(i);
+			}
+		}
+	}
+	if ( search_all) {
+		return found_list;
+	} else {
+		return -1;
+	}
+},
+arr_search: function (A,B,C,D)
+{
+	return F.search_array(A,B,C,D);
+},
+
+/*\
+ * util.push_unique
+ * push only if not existed in array
+ [ method ]
+ - array (array)
+ - element (object)
+ = (boolean) true if added
+\*/
+push_unique: function ( array, element)
+{
+	var res = F.arr_search( array, function(E){return E==element} );
+	if (res == -1)
+	{
+		array.push(element);
+		return true;
+	}
+},
+
+/*\
+ * util.extend_object
+ * extend obj1 with all members of obj2
+ [ method ]
+ - obj1, obj2 (object)
+ = (object) a modified obj1
+\*/
+extend_object: function (obj1, obj2)
+{
+	for (var p in obj2)
+	{
+		if ( typeof obj2[p]==='object' )
+		{
+			obj1[p] = arguments.callee((obj1[p]?obj1[p]:(obj2[p] instanceof Array?[]:{})), obj2[p]);
+		} else
+		{
+			obj1[p] = obj2[p];
+		}
+	}
+	return obj1;
+},
+
+/*\
+ * util.to_text
+ * convert an object into JSON text
+ * 
+ * most of the time you should use built-in `JSON.stringify` instead
+ [ method ]
+ - obj (object)
+ - name (string) the object's name
+ - [sep] (string) separator, default as `\n`
+ - [pretext] (string) used in recursion only, set it to null
+ - [filter] (function) a filter `function(p,P)` passing in name p and object P, return 1 to hide the attribute, OR return a string to be shown
+ - [TTL] (number) time-to-live to prevent infinite looping
+|	var obj={};
+|	obj.a={};
+|	obj.a.x=1;
+|	obj.a.y=1;
+|	obj.b='hello';
+|	obj.c=12;
+|	console.log(util.to_text(obj,'obj'));
+|	//outputs:
+|	obj:
+|	{
+|		a:
+|		{
+|			'x': 1,
+|			'y': 1
+|		},
+|		'b': 'hello',
+|		'c': 12
+|	}
+\*/
+to_text: function (
+	obj2, name,
+	sep,
+	pretext,
+	filter,
+	TTL
+)
+{
+	if( TTL===0) return '';
+	if( !TTL) TTL=30;
+	if( !sep) sep='\n';
+	if( !pretext) pretext='';
+
+	var str = pretext+ name +':'+sep;
+	str+= pretext+ '{';
+	var cc=0;
+	for (var p in obj2)
+	{
+		var fil = filter && filter(p,obj2[p]);
+		if( fil==1)
+		{
+			//do nothing
+		}
+		else if( typeof fil=='string')
+		{
+			str += (cc?',':'')+sep+pretext+'\t'+"'"+p+"'"+': '+fil;
+		}
+		else
+		{
+			if( obj2[p].constructor==Object )
+			{
+				str += (cc?',':'')+sep+arguments.callee(obj2[p],p,sep,pretext+'\t',filter,TTL-1);
+			} else
+			{
+				str += (cc?',':'')+sep+pretext+'\t'+"'"+p+"'"+': ';
+				if( typeof obj2[p]=='string')
+					str += "'";
+				str += obj2[p];
+				if( typeof obj2[p]=='string')
+					str += "'";
+			}
+		}
+		cc=1;
+	}
+	str+= sep+pretext+ '}';
+	return str;
+},
+
+/*\
+ * util.extract_array
+ [ method ]
+ * extract properties from an array of objects
+|	//say we have
+|	[ {x:x1,y:y1}, {x:x2,y:y2}, {x:x3,y:y3},,,]
+|	//we want to extract it into
+|	{
+|	  x:
+|		[ x1, x2, x3,,, ],
+|	  y:
+|		[ y1, y2, y3,,, ]
+|	}
+ - array (array)
+ - prop (string) property name
+ * or
+ - prop (array) array of property name
+ = (array) extracted array
+\*/
+extract_array: function(array, prop)
+{
+	var out={};
+	prop = F.make_array(prop);
+
+	for( var j in prop)
+		out[prop[j]] = [];
+
+	for( var i=0; i<array.length; i++)
+	{
+		for( var k=0; k<prop.length; k++)
+		{
+			var P=prop[k];
+			out[P].push(array[i][P]);
+		}
+	}
+	return out;
+},
+
+/** proposed method
+group an array of objects using a key
+group_elements( [{name:'alice',gender:'F'},{name:'bob',gender:'M'},{name:'cathy',gender:'F'}], 'gender')
+returns
+{
+	'F':[{name:'alice',gender:'F'},{name:'cathy',gender:'F'}],
+	'M':[{name:'bob',gender:'M'}]
+}
+*/
+group_elements: function(arr,key)
+{
+	var group={};
+	for( var i=0; i<arr.length; i++)
+	{
+		if( arr[i][key])
+		{
+			var gp=arr[i][key];
+			if( !group[gp])
+				group[gp]=[];
+			group[gp].push(arr[i]);
+		}
+	}
+	return group;
+},
+
+/** proposed method*/
+for_each: function(arr,callback)
+{
+	if( arr instanceof Array)
+	{
+		for( var i=0; i<arr.length; i++)
+			callback(arr[i],i);
+	}
+	else if( arr)
+	{
+		for( var I in arr)
+			callback(arr[I]);
+	}
+},
+
+/** proposed method*/
+call_each: function(arr,method /*,arg*/)
+{
+	var arg = Array.prototype.slice.call(arguments,2);
+	if( arr instanceof Array)
+	{
+		for( var i=0; i<arr.length; i++)
+			if( typeof arr[i][method]==='function')
+				arr[i][method].apply(null, arg);
+	}
+	else if( arr)
+	{
+		for( var i in arr)
+			if( typeof arr[i][method]==='function')
+				arr[i][method].apply(null, arg);
+	}
+}
+
+};
+
+return F;
+});
+
+/*\
+ * loader.js
+ * 
+ * loader is a requirejs plugin that loads content packages
+\*/
+
+define('LF/loader',['LF/packages','LF/global','F.core/util'],function(packages,global,Futil){
+
+	return {
+		load: function (name, require, load, config)
+		{
+			var path='';
+			var content={};
+			var manifest={};
+
+			if( config.isBuild)
+			{
+				load();
+				return ;
+			}
+
+			var first,count=0;
+			for( var i in packages)
+			{
+				if( count===0)
+					first=i;
+				count++;
+			}
+			if( count===1)
+			{
+				load_package(packages[first]);
+			}
+
+			function load_package(pack)
+			{
+				path=normalize_path(pack.path);
+				content.location = normalize_path(config.baseUrl)+path;
+				require( [filepath('manifest')], function(mani)
+				{
+					manifest=mani;
+					var manifest_schema=
+					{
+						"data":"string",
+						"resourcemap":"string!optional"
+					}
+					if( !validate(manifest_schema,manifest))
+					{
+						console.log('loader: error: manifest.js of '+path+' is not correct.');
+					}
+					require( [filepath(manifest.data)], load_data);
+					load_something('resourcemap');
+				});
+			}
+			function normalize_path(ppp)
+			{	//normalize a file path section
+				if( !ppp)
+					return '';
+				ppp=ppp.replace(/\\/g,'/');
+				if( ppp.charAt(ppp.length-1)!=='/')
+					ppp+='/';
+				if( ppp.charAt(0)==='/')
+					ppp=ppp.slice(1);
+				return ppp;
+			}
+			function filepath(ppp)
+			{
+				if( !ppp)
+					return '';
+				if( ppp.lastIndexOf('.js')===ppp.length-3)
+					ppp = ppp.slice(0,ppp.length-3);
+				var suf = path.indexOf('http')===0?'.js':'';
+				return path+ppp+suf;
+			}
+			function load_data(datalist)
+			{
+				function allow_load(OO)
+				{
+					if( typeof global.lazyload==='function')
+					{
+						if( !global.lazyload(OO))
+							return true;
+					}
+					else
+						return true;
+				}
+
+				var datafile_depend=[];
+
+				for( var i in datalist)
+				{
+					if( datalist[i] instanceof Array)
+					{
+						for( var j=0; j<datalist[i].length; j++)
+							if( datalist[i][j].file)
+							if( allow_load(datalist[i][j]))
+								datafile_depend.push(filepath(datalist[i][j].file));
+					}
+					else if( typeof datalist[i]==='object')
+					{
+						if( datalist[i].file)
+						if( allow_load(datalist[i]))
+							datafile_depend.push(filepath(datalist[i].file));
+					}
+				}
+
+				require( datafile_depend, function()
+				{
+					var gamedata=Futil.extend_object({},datalist);
+					var param = 0;
+
+					for( var i in datalist)
+					{
+						if( datalist[i] instanceof Array)
+						{
+							for( var j=0; j<datalist[i].length; j++)
+								if( datalist[i][j].file)
+								{
+									if( allow_load(datalist[i][j]))
+									{
+										gamedata[i][j].data = arguments[param];
+										param++;
+									}
+									else
+									{
+										gamedata[i][j].data = 'lazy';
+									}
+								}
+						}
+						else if( typeof datalist[i]==='object')
+						{
+							if( datalist[i].file)
+							{
+								if( allow_load(datalist[i]))
+								{
+									gamedata[i].data = arguments[param];
+									param++;
+								}
+								else
+								{
+									gamedata[i].data = 'lazy';
+								}
+							}
+						}
+					}
+
+					content.data=gamedata;
+					module_lazyload();
+					load_ready();
+				});
+			}
+			function load_something(thing)
+			{
+				require( [filepath(manifest[thing])], function(it){
+					content[thing] = it;
+					load_ready();
+				});
+			}
+			function load_ready()
+			{
+				var content_schema=
+				{
+					data:'object',
+					resourcemap:'object!optional',
+					location:'string'
+				}
+				if( validate(content_schema,content))
+					load(content); //make the require loader return
+			}
+			function module_lazyload()
+			{	//embed the lazyload module
+				if( typeof global.lazyload==='function')
+				{
+					content.data.object.load=function(ID,ready)
+					{
+						var objects=content.data.object;
+						var load_list=[];
+						var res_list=[];
+						for( var i=0; i<ID.length; i++)
+						{
+							var O; //search for the object
+							for( var j=0; j<objects.length; j++)
+								if( objects[j].id===ID[i])
+								{
+									O=objects[j];
+									break;
+								}
+							if( O && O.file && O.data==='lazy')
+							{
+								load_list.push(O);
+								res_list .push(filepath(O.file));
+							}
+						}
+						requirejs(res_list,function()
+						{
+							for( var i=0; i<arguments.length; i++)
+								load_list[i].data = arguments[i];
+							ready();
+						});
+					}
+				}
+			}
+
+			/** a simple JSON schema validator*/
+			function validate(schema,object)
+			{
+				var good=false;
+				if( object)
+				{
+					good=true;
+					for( var I in schema)
+					{
+						var sss = schema[I].split('!'),
+							type = sss[0],
+							option = sss[1] || '';
+						if( typeof object[I]===type) {
+							//good
+						}
+						else if (typeof object[I]==='undefined' && 
+									option && option==='optional') {
+							//still good
+						}
+						else {
+							good=false;
+							break;
+						}
+					}
+				}
+				return good;
+			}
+		},
+		normalize: function (name, normalize)
+		{
+			return name;
+		}
+	}
+});
+
 define('F.core/controller',[],function()
 {
 
@@ -394,622 +1648,6 @@ function(embed)
 	'.F_sprite { position:absolute; overflow:hidden; width:10px; height:10px; } .F_sprite_group { position:absolute; } .F_sprite_inline { overflow:hidden; width:10px; height:10px; } .F_sprite_img { position:absolute; } /* .canvas { position:relative; width:800px; height:300px; border:1px solid #000; } .page { position: absolute; left: 0px; top: 0px; border: 1px solid #000; z-index: 10000; }*/'
 	);
 	return true;
-});
-
-define('F.core/support',[],function()
-{
-	var support = {};
-	/*\
-	 * support
-	 * test for browser support of certain technologies, most code is adapted from other places.
-	 * including
-	 * - [http://davidwalsh.name/vendor-prefix](http://davidwalsh.name/vendor-prefix)
-	 * - [https://gist.github.com/3626934](https://gist.github.com/3626934)
-	 * - [https://gist.github.com/1579671](https://gist.github.com/3626934)
-	 * [example](../sample/support.html)
-	 # <iframe src="../sample/support.html" width="800" height="200"></iframe>
-	\*/
-	/*\
-	 * support.browser
-	 - (number) browser name
-	 [ property ]
-	\*/
-	/*\
-	 * support.browser_name
-	 - (number) browser name
-	 [ property ]
-	\*/
-	/*\
-	 * support.browser_version
-	 - (number) browser version string
-	 [ property ]
-	\*/
-	/*\
-	 * support.mobile
-	 - (string) mobile device name, undefined if not on a mobile device
-	 [ property ]
-	\*/
-	/*\
-	 * support.prefix
-	 - (string) browser prefix
-	 [ property ]
-	\*/
-	/*\
-	 * support.prefix_dom
-	 - (string) browser prefix for DOM
-	 [ property ]
-	\*/
-	/*\
-	 * support.prefix_css
-	 - (string) browser prefix for css
-	 [ property ]
-	\*/
-	/*\
-	 * support.prefix_js
-	 - (string) browser prefix for js
-	 [ property ]
-	\*/
-	/*\
-	 * support.css2dtransform
-	 - (string) if supported, style property name with correct prefix
-	 [ property ]
-	 * you can do something like
-	 | if( support.css2dtransform)
-	 |		element.style[support.css2dtransform]= 'translate('+P.x+'px,'+P.y+'px) ';
-	\*/
-	/*\
-	 * support.css3dtransform
-	 - (string) if supported, style property name with correct prefix
-	 [ property ]
-	 | if( support.css3dtransform)
-	 | 	this.el.style[support.css3dtransform]= 'translate3d('+P.x+'px,'+P.y+'px, 0px) ';
-	\*/
-	/*\
-	 * support.localStorage
-	 - (object) similar functionality as `window.localStorage`
-	 * if `window.localStorage` is not supported, will create a shim that emulates `window.localStorage` using cookie. the methods `clear`, `getItem`, `key`, `removeItem`, `setItem` and property `length` are available, but the dot or array notation does not work. for example, the following does **not** work
-	 | window.localStorage.someProperty = 2;
-	 | window.localStorage['someProperty'] = 2;
-	 * instead, use the following:
-	 | support.localStorage.setItem('someProperty', 2);
-	 * Ideally, all HTML5 browsers should support localStorage. The only problem is localStorage does not work in IE10 in protected mode for offline files.
-	 [ property ]
-	\*/
-	/*\
-	 * support.sessionStorage
-	 - (object) similar functionality as `window.sessionStorage`
-	 [ property ]
-	\*/
-
-	//test for browser and device
-	(function(){		
-		var N= navigator.appName, ua= navigator.userAgent, tem;
-		var M= ua.match(/(opera|chrome|safari|firefox|msie)\/?\s*(\.?\d+(\.\d+)*)/i);
-		if(M && (tem= ua.match(/version\/([\.\d]+)/i))!= null) M[2]= tem[1];
-		M= M? [M[1], M[2]]: [N, navigator.appVersion,'-?'];
-		support.browser = M[0];
-		support.browser_name = M[0];
-		support.browser_version = M[1];
-		var mobile = /iPad|iPod|iPhone|Android|webOS|IEMobile/i.exec(navigator.userAgent.toLowerCase());
-		support.mobile= mobile?mobile[0]:undefined;
-		//[--adapted from http://davidwalsh.name/vendor-prefix
-		var styles = window.getComputedStyle(document.documentElement, ''),
-			pre = (Array.prototype.slice
-				.call(styles)
-				.join('') 
-				.match(/-(moz|webkit|ms)-/) || (styles.OLink === '' && ['', 'o'])
-				)[1],
-			dom = ('WebKit|Moz|MS|O').match(new RegExp('(' + pre + ')', 'i'))[1];
-		support.prefix = dom;
-		support.prefix_dom = dom;
-		support.prefix_css = '-'+pre+'-';
-		support.prefix_js = pre[0].toUpperCase() + pre.substr(1);
-		//--]
-	}());
-
-	//test for css 2d transform support
-	//[--adapted from https://gist.github.com/3626934
-	(function(){
-
-		var el = document.createElement('p'), t, has3d;
-		var transforms = {
-			'WebkitTransform':'-webkit-transform',
-			'OTransform':'-o-transform',
-			'MSTransform':'-ms-transform',
-			'MozTransform':'-moz-transform',
-			'transform':'transform'
-		};
-
-		/* Add it to the body to get the computed style.*/
-		document.getElementsByTagName('body')[0].appendChild(el);
-
-		for(t in transforms)
-		{
-			if( el.style[t] !== undefined )
-			{
-				var str;
-				str = 'matrix(1, 0, 0, 1, 0, 0)';
-				el.style[t] = str;
-				if( str===window.getComputedStyle(el).getPropertyValue( transforms[t] ))
-					support.css2dtransform= t;
-
-				str = 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1)'
-				el.style[t] = str;
-				//if( str===window.getComputedStyle(el).getPropertyValue( transforms[t] ))
-				if( window.getComputedStyle(el).getPropertyValue( transforms[t] ).indexOf('matrix3d')===0)
-					support.css3dtransform= t;
-			}
-		}
-
-		el.parentNode.removeChild(el);
-	}());
-	//--] end
-
-	/// because IE9/10 has no localstorage on local file
-	// Storage polyfill by Remy Sharp
-	// [--
-	// https://github.com/inexorabletash/polyfill/blob/master/storage.js
-	// https://gist.github.com/350433
-	// Tweaks by Joshua Bell (inexorabletash@gmail.com)
-	if (!window.localStorage || !window.sessionStorage) (function() {
-
-		var Storage = function(type) {
-			function createCookie(name, value, days) {
-				var date, expires;
-
-				if (days) {
-					date = new Date();
-					date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-					expires = "; expires=" + date.toGMTString();
-				} else {
-					expires = "";
-				}
-				document.cookie = name + "=" + value + expires + "; path=/";
-			}
-
-			function readCookie(name) {
-				var nameEQ = name + "=",
-					ca = document.cookie.split(';'),
-					i, c;
-
-				for (i = 0; i < ca.length; i++) {
-					c = ca[i];
-					while (c.charAt(0) == ' ') {
-						c = c.substring(1, c.length);
-					}
-
-					if (c.indexOf(nameEQ) == 0) {
-						return c.substring(nameEQ.length, c.length);
-					}
-				}
-				return null;
-			}
-
-			function setData(data) {
-				data = JSON.stringify(data);
-				if (type == 'session') {
-					window.name = data;
-				} else {
-					createCookie('localStorage', data, 365);
-				}
-			}
-
-			function clearData() {
-				if (type == 'session') {
-					window.name = '';
-				} else {
-					createCookie('localStorage', '', 365);
-				}
-			}
-
-			function getData() {
-				var data = type == 'session' ? window.name : readCookie('localStorage');
-				return data ? JSON.parse(data) : {};
-			}
-
-
-			// initialise if there's already data
-			var data = getData();
-
-			function numKeys() {
-				var n = 0;
-				for (var k in data) {
-					if (data.hasOwnProperty(k)) {
-						n += 1;
-					}
-				}
-				return n;
-			}
-
-			return {
-				clear: function() {
-					data = {};
-					clearData();
-					this.length = numKeys();
-				},
-				getItem: function(key) {
-					key = encodeURIComponent(key);
-					return data[key] === undefined ? null : data[key];
-				},
-				key: function(i) {
-					// not perfect, but works
-					var ctr = 0;
-					for (var k in data) {
-						if (ctr == i) return decodeURIComponent(k);
-						else ctr++;
-					}
-					return null;
-				},
-				removeItem: function(key) {
-					key = encodeURIComponent(key);
-					delete data[key];
-					setData(data);
-					this.length = numKeys();
-				},
-				setItem: function(key, value) {
-					key = encodeURIComponent(key);
-					data[key] = String(value);
-					setData(data);
-					this.length = numKeys();
-				},
-				length: 0
-			};
-		};
-
-		if (!window.localStorage) support.localStorage = new Storage('local');
-		if (!window.sessionStorage) support.sessionStorage = new Storage('session');
-
-	}());
-	else
-	{
-		support.localStorage = window.localStorage;
-		support.sessionStorage = window.sessionStorage;
-	}
-	//--]
-
-	/// because IE9 has no classList
-	//classList shim by eligrey
-	/*! @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js*/
-	if("document" in self&&!("classList" in document.createElement("_")&&"classList" in document.createElementNS("http://www.w3.org/2000/svg","svg"))){(function(j){if(!("Element" in j)){return}var a="classList",f="prototype",m=j.Element[f],b=Object,k=String[f].trim||function(){return this.replace(/^\s+|\s+$/g,"")},c=Array[f].indexOf||function(q){var p=0,o=this.length;for(;p<o;p++){if(p in this&&this[p]===q){return p}}return -1},n=function(o,p){this.name=o;this.code=DOMException[o];this.message=p},g=function(p,o){if(o===""){throw new n("SYNTAX_ERR","An invalid or illegal string was specified")}if(/\s/.test(o)){throw new n("INVALID_CHARACTER_ERR","String contains an invalid character")}return c.call(p,o)},d=function(s){var r=k.call(s.getAttribute("class")),q=r?r.split(/\s+/):[],p=0,o=q.length;for(;p<o;p++){this.push(q[p])}this._updateClassName=function(){s.setAttribute("class",this.toString())}},e=d[f]=[],i=function(){return new d(this)};n[f]=Error[f];e.item=function(o){return this[o]||null};e.contains=function(o){o+="";return g(this,o)!==-1};e.add=function(){var s=arguments,r=0,p=s.length,q,o=false;do{q=s[r]+"";if(g(this,q)===-1){this.push(q);o=true}}while(++r<p);if(o){this._updateClassName()}};e.remove=function(){var t=arguments,s=0,p=t.length,r,o=false;do{r=t[s]+"";var q=g(this,r);if(q!==-1){this.splice(q,1);o=true}}while(++s<p);if(o){this._updateClassName()}};e.toggle=function(p,q){p+="";var o=this.contains(p),r=o?q!==true&&"remove":q!==false&&"add";if(r){this[r](p)}return !o};e.toString=function(){return this.join(" ")};if(b.defineProperty){var l={get:i,enumerable:true,configurable:true};try{b.defineProperty(m,a,l)}catch(h){if(h.number===-2146823252){l.enumerable=false;b.defineProperty(m,a,l)}}}else{if(b[f].__defineGetter__){m.__defineGetter__(a,i)}}}(self))};
-
-	return support;
-});
-
-/*\
- * util
- * javascript utilities
-\*/
-define('F.core/util',[],function(){
-
-var F={
-
-// javascript-----------------
-
-/**	inject a .js file
-	deprecated in favour of the use of head.js, now requirejs
-*/
-/* js: function (filename)
-{
-	var head = document.getElementsByTagName('head')[0];
-	var script = document.createElement('script');
-	script.src = filename;
-	script.type = 'text/javascript';
-	head.appendChild(script);
-}, */
-
-/*\
- * util.css
- * attach a stylesheet to page
- [ method ]
- - filename (string)
-\*/
-css: function (filename)
-{
-	var head = document.getElementsByTagName('head')[0];
-	var link = document.createElement('link');
-	link.href = filename;
-	link.rel = 'stylesheet';
-	link.type = 'text/css';
-	head.appendChild(link);
-},
-
-/**
- * util.double_delegate
- * double delegate a function
- [ method ]
- * [reference](http://roberthahn.ca/articles/2007/02/02/how-to-use-window-onload-the-right-way/)
- */
-double_delegate: function (function1, function2)
-{
-	return function() {
-	if (function1)
-		function1.apply(this,Array.prototype.slice.call(arguments));
-	if (function2)
-		function2.apply(this,Array.prototype.slice.call(arguments));
-	}
-},
-
-/*\
- * util.make_array
- [ method ]
- - target (any)
- * if target is:
- - (array) returns target as is.
- - (object) returns object encapsulated in an array.
- - (falsy) (null, undefined or zero), returns an empty array.
-\*/
-make_array: function (target)
-{
-	if( target)
-	{
-		if( target instanceof Array)
-			return target;
-		else
-			return [target];
-	}
-	else
-		return [];
-},
-
-//data structure------------
-
-/*\
- * util.search_array
- [ method ]
- - arr (array) target to be searched
- - fc_criteria (function) return true when an accepted element is passed in
- - [fc_replace] (function) to return a replacement value when original value is passed in
- - [search_all] (boolean) if true, will search through entire array before returning the list of indices, otherwise, will return immediately at the first accepted element
- = (number) index of the found element if `search_all` if false
- = (array) of (number) if `search_all` is true
-\*/
-search_array: function (arr, fc_criteria, fc_replace, search_all)
-{
-	var found_list=new Array();
-	//for ( var i=0; i<arr.length; i++)
-	for ( var i in arr)
-	{
-		if ( fc_criteria(arr[i],i))
-		{
-			if ( fc_replace) {
-				arr[i] = fc_replace(arr[i]);
-			}
-			if ( !search_all) {
-				return i;
-			} else {
-				found_list.push(i);
-			}
-		}
-	}
-	if ( search_all) {
-		return found_list;
-	} else {
-		return -1;
-	}
-},
-arr_search: function (A,B,C,D)
-{
-	return F.search_array(A,B,C,D);
-},
-
-/*\
- * util.push_unique
- * push only if not existed in array
- [ method ]
- - array (array)
- - element (object)
- = (boolean) true if added
-\*/
-push_unique: function ( array, element)
-{
-	var res = F.arr_search( array, function(E){return E==element} );
-	if (res == -1)
-	{
-		array.push(element);
-		return true;
-	}
-},
-
-/*\
- * util.extend_object
- * extend obj1 with all members of obj2
- [ method ]
- - obj1, obj2 (object)
- = (object) a modified obj1
-\*/
-extend_object: function (obj1, obj2)
-{
-	for (var p in obj2)
-	{
-		if ( typeof obj2[p]==='object' )
-		{
-			obj1[p] = arguments.callee((obj1[p]?obj1[p]:(obj2[p] instanceof Array?[]:{})), obj2[p]);
-		} else
-		{
-			obj1[p] = obj2[p];
-		}
-	}
-	return obj1;
-},
-
-/*\
- * util.to_text
- * convert an object into JSON text
- * 
- * most of the time you should use built-in `JSON.stringify` instead
- [ method ]
- - obj (object)
- - name (string) the object's name
- - [sep] (string) separator, default as `\n`
- - [pretext] (string) used in recursion only, set it to null
- - [filter] (function) a filter `function(p,P)` passing in name p and object P, return 1 to hide the attribute, OR return a string to be shown
- - [TTL] (number) time-to-live to prevent infinite looping
-|	var obj={};
-|	obj.a={};
-|	obj.a.x=1;
-|	obj.a.y=1;
-|	obj.b='hello';
-|	obj.c=12;
-|	console.log(util.to_text(obj,'obj'));
-|	//outputs:
-|	obj:
-|	{
-|		a:
-|		{
-|			'x': 1,
-|			'y': 1
-|		},
-|		'b': 'hello',
-|		'c': 12
-|	}
-\*/
-to_text: function (
-	obj2, name,
-	sep,
-	pretext,
-	filter,
-	TTL
-)
-{
-	if( TTL===0) return '';
-	if( !TTL) TTL=30;
-	if( !sep) sep='\n';
-	if( !pretext) pretext='';
-
-	var str = pretext+ name +':'+sep;
-	str+= pretext+ '{';
-	var cc=0;
-	for (var p in obj2)
-	{
-		var fil = filter && filter(p,obj2[p]);
-		if( fil==1)
-		{
-			//do nothing
-		}
-		else if( typeof fil=='string')
-		{
-			str += (cc?',':'')+sep+pretext+'\t'+"'"+p+"'"+': '+fil;
-		}
-		else
-		{
-			if( obj2[p].constructor==Object )
-			{
-				str += (cc?',':'')+sep+arguments.callee(obj2[p],p,sep,pretext+'\t',filter,TTL-1);
-			} else
-			{
-				str += (cc?',':'')+sep+pretext+'\t'+"'"+p+"'"+': ';
-				if( typeof obj2[p]=='string')
-					str += "'";
-				str += obj2[p];
-				if( typeof obj2[p]=='string')
-					str += "'";
-			}
-		}
-		cc=1;
-	}
-	str+= sep+pretext+ '}';
-	return str;
-},
-
-/*\
- * util.extract_array
- [ method ]
- * extract properties from an array of objects
-|	//say we have
-|	[ {x:x1,y:y1}, {x:x2,y:y2}, {x:x3,y:y3},,,]
-|	//we want to extract it into
-|	{
-|	  x:
-|		[ x1, x2, x3,,, ],
-|	  y:
-|		[ y1, y2, y3,,, ]
-|	}
- - array (array)
- - prop (string) property name
- * or
- - prop (array) array of property name
- = (array) extracted array
-\*/
-extract_array: function(array, prop)
-{
-	var out={};
-	prop = F.make_array(prop);
-
-	for( var j in prop)
-		out[prop[j]] = [];
-
-	for( var i=0; i<array.length; i++)
-	{
-		for( var k=0; k<prop.length; k++)
-		{
-			var P=prop[k];
-			out[P].push(array[i][P]);
-		}
-	}
-	return out;
-},
-
-/** proposed method
-group an array of objects using a key
-group_elements( [{name:'alice',gender:'F'},{name:'bob',gender:'M'},{name:'cathy',gender:'F'}], 'gender')
-returns
-{
-	'F':[{name:'alice',gender:'F'},{name:'cathy',gender:'F'}],
-	'M':[{name:'bob',gender:'M'}]
-}
-*/
-group_elements: function(arr,key)
-{
-	var group={};
-	for( var i=0; i<arr.length; i++)
-	{
-		if( arr[i][key])
-		{
-			var gp=arr[i][key];
-			if( !group[gp])
-				group[gp]=[];
-			group[gp].push(arr[i]);
-		}
-	}
-	return group;
-},
-
-/** proposed method*/
-for_each: function(arr,callback)
-{
-	if( arr instanceof Array)
-	{
-		for( var i=0; i<arr.length; i++)
-			callback(arr[i],i);
-	}
-	else if( arr)
-	{
-		for( var I in arr)
-			callback(arr[I]);
-	}
-},
-
-/** proposed method*/
-call_each: function(arr,method /*,arg*/)
-{
-	var arg = Array.prototype.slice.call(arguments,2);
-	if( arr instanceof Array)
-	{
-		for( var i=0; i<arr.length; i++)
-			if( typeof arr[i][method]==='function')
-				arr[i][method].apply(null, arg);
-	}
-	else if( arr)
-	{
-		for( var i in arr)
-			if( typeof arr[i][method]==='function')
-				arr[i][method].apply(null, arg);
-	}
-}
-
-};
-
-return F;
 });
 
 /*\
@@ -1628,644 +2266,6 @@ sprite.prototype.show=function()
 
 return sprite;
 
-});
-
-/*\
- * packages.js
- * 
- * packages.js lists the available content packages
-\*/
-define('LF/packages',{
-	//"package name": { path:"path/to/package" }
-	"LF2 1.451": { path:"LFrelease/LF2_19" }
-});
-
-/*\
- * util.js
- * utilities for F.LF
-\*/
-
-define('LF/util',[],function(){
-
-if (typeof console==='undefined')
-{	//polyfill for IE, this is just for precaution
-	// we should not use console.log in production anyway unless for fatal error
-    console={};
-    console.log = function(){}
-}
-
-var util={};
-
-util.select_from=function(from,where,option)
-{
-	var res=[];
-	for( var i in from)
-	{
-		var O=from[i];
-		var match=true;
-		if( typeof where==='function')
-		{
-			if( !where(O))
-				match=false;
-		}
-		else
-			for( var j in where)
-			{
-				if( O[j]!==where[j])
-					match=false;
-			}
-		if( match)
-			res.push(O);
-	}
-	if( res.length===0)
-		return ;
-	else if( res.length===1)
-		return res[0];
-	else
-		return res;
-}
-
-util.lookup=function(A,x)
-{
-	for( var i in A)
-	{
-		if( x<=i)
-			return A[i];
-	}
-}
-
-util.lookup_abs=function(A,x)
-{
-	if( x<0) x=-x;
-	for( var i in A)
-	{
-		if( x<=i)
-			return A[i];
-	}
-}
-
-util.shallow_copy=function(A)
-{
-	var B={};
-	for( var i in A)
-		B[i] = A[i];
-	return B;
-}
-
-util.div=function(classname)
-{
-	if( !util.container)
-	{
-		util.container = document.getElementsByClassName('LFcontainer')[0];
-		if( !util.container) return null;
-	}
-	if( !classname) return util.container;
-	return util.container.getElementsByClassName(classname)[0];
-}
-
-util.filename=function(file)
-{
-	if( file.lastIndexOf('/')!==-1)
-		file = file.slice(file.lastIndexOf('/')+1);
-	if( file.lastIndexOf('.js')!==-1)
-		file = file.slice(0,file.lastIndexOf('.js'));
-	return file;
-}
-
-/**
-The resourcemap specified by F.core allows putting a js function as a condition checker.
-This is considered insecure in F.LF. thus F.LF only allows simple predefined condition checking.
-*/
-util.setup_resourcemap=function(package,Fsprite)
-{
-	var has_resmap=false;
-	if( package.resourcemap)
-	if( typeof package.resourcemap.condition==='string')
-	{
-		var cond = package.resourcemap.condition.split(' ');
-		if( cond[0]==='location' && cond[1]==='contain' &&
-			cond[2] && cond[3]==='at' && cond[4])
-		{
-			cond[4]=parseInt(cond[4]);
-			package.resourcemap.condition = function()
-			{
-				return window.location.href.indexOf(cond[2])===cond[4];
-			}
-		}
-		else if( cond[0]==='location' && cond[1]==='contain' && cond[2])
-		{
-			package.resourcemap.condition = function()
-			{
-				return window.location.href.indexOf(cond[2])!==-1;
-			}
-		}
-
-		if( typeof package.resourcemap.condition==='function')
-		{
-			var resmap = [
-				package.resourcemap, //package-defined resourcemap
-				{	//default resourcemap
-					get: function(res)
-					{
-						return package.location+res;
-					}
-				}
-			];
-			Fsprite.masterconfig_set('resourcemap',resmap);
-			has_resmap=true;
-		}
-	}
-	if( !has_resmap)
-		Fsprite.masterconfig_set('baseUrl',package.location);
-}
-
-//return the parameters passed by location
-util.location_parameters=function()
-{
-	var param = window.location.href.split('/').pop();
-	if( param.indexOf('?')!==-1)
-	{
-		var param = param.split('?').pop().split('&');
-		for( var i=0; i<param.length; i++)
-			param[i] = param[i].split('=');
-		return param;
-	}
-}
-
-return util;
-});
-
-/*\
- * global.js
- * 
- * global constants of a game
- * 
- * note to data changers: tweak entries in this file very carefully. do not add or delete entries.
-\*/
-define('LF/global',['LF/util'],function(util)
-{
-
-var G={};
-
-G.application={};
-var GA = G.application;
-GA.window={};
-GA.window.width=794;
-GA.window.height=550;
-GA.viewer={};
-GA.viewer.height=400;
-GA.camera={};
-GA.camera.speed_factor=1/18;
-
-/*\
- * global.combo_list
- [ property ]
- * list of combos
- | { name:'DvA', seq:['def','down','att']} //example
-\*/
-G.combo_list = [
-	{ name:'D<A', seq:['def','left','att'], clear_on_combo:false},
-	{ name:'D>A', seq:['def','right','att'], clear_on_combo:false},
-	{ name:'DvA', seq:['def','down','att']},
-	{ name:'D^A', seq:['def','up','att']},
-	{ name:'DvJ', seq:['def','down','jump']},
-	{ name:'D^J', seq:['def','up','jump']},
-	{ name:'D<J', seq:['def','left','jump']},
-	{ name:'D>J', seq:['def','right','jump']},
-	{ name:'D<AJ', seq:['def','left','att','jump']},
-	{ name:'D>AJ', seq:['def','right','att','jump']},
-	{ name:'DJA', seq:['def','jump','att']}
-];
-G.combo_tag =
-{	//look up from combo name to tag name
-	'def':'hit_d',
-	'jump':'hit_j',
-	'att':'hit_a',
-	'D>A':'hit_Fa',
-	'D<A':'hit_Fa',
-	'DvA':'hit_Da',
-	'D^A':'hit_Ua',
-	'DvJ':'hit_Dj',
-	'D^J':'hit_Uj',
-	'D>J':'hit_Fj',
-	'D<J':'hit_Fj',
-	'D<AJ':'hit_Fj',
-	'D>AJ':'hit_Fj',
-	'DJA':'hit_ja'
-};
-G.combo_priority =
-{	//larger number is higher priority
-	'up':0,'down':0,'left':0,'right':0,'def':0,'jump':0,'att':0,'run':0,
-	'D>A':1, 'D<A':1, 'DvA':1, 'D^A':1,
-	'DvJ':1, 'D^J':1, 'D>J':1, 'D<J':1, 'D<AJ':1, 'D>AJ':1, 'DJA':1
-};
-
-G.lazyload = function(O) //return true to delay loading of data files
-{
-	if( !this.character_list)
-		this.character_list={};
-	if( O.type==='character')
-	{
-		var file = util.filename(O.file);
-		this.character_list[file] = true;
-		return true; //delay loading of all character files
-	}
-	else if( O.type)
-	{
-		var file = util.filename(O.file);
-		if( file.lastIndexOf('_')!==-1)
-			file = file.slice(0,file.lastIndexOf('_'));
-		/** delay loading of all character prefixed files. consider,
-			{id: 1, type:'character', file:'data/deep.js'},
-			{id:203, type:'specialattack', file:'data/deep_ball.js'}
-			as `deep.js` is of type character, any files matching `deep_*` will also be lazy loaded
-		*/
-		if( this.character_list[file])
-			return true;
-	}
-	return false;
-};
-
-G.gameplay={};
-var GC = G.gameplay;
-
-/*\
- * global.gameplay.default
- [ property ]
- * What are the defaults?
- * 
- * default means `otherwise specified`. all defaults get overridden, and (mostly) you can set the specific property in data files. so it might not be meaningful to change default values.
- * if any of them cannot be overridden, please move them out of default.
-\*/
-GC.default={};
-GC.default.health={};
-GC.default.health.hp_full=500;
-GC.default.health.mp_full=500;
-GC.default.health.mp_start=200; //it cannot be overriden
-
-GC.default.itr={};
-GC.default.itr.zwidth= 12; //default itr zwidth
-GC.default.itr.hit_stop= 3; //default stall when hit somebody
-GC.default.itr.throw_injury= 10;
-
-GC.default.cpoint={};
-GC.default.cpoint.hurtable= 0; //default cpoint hurtable
-GC.default.cpoint.cover= 0; //default cpoint cover
-GC.default.cpoint.vaction= 135; //default frame being thrown
-
-GC.default.wpoint={};
-GC.default.wpoint.cover= 0;
-
-GC.default.effect={};
-GC.default.effect.num= 0; //default effect num
-
-GC.default.fall={};
-GC.default.fall.value= 20; //default fall
-GC.default.fall.dvy= -6.9; //default dvy when falling
-
-GC.default.weapon={};
-GC.default.weapon.vrest= 9; //default weapon vrest
-
-GC.default.character={};
-GC.default.character.arest= 7; //default character arest
-
-GC.default.machanics={};
-GC.default.machanics.mass= 1; //default mass; weight = mass * gravity
-
-/*\
- * global.gameplay
- [ property ]
- * gameplay constants
- * 
- * these are defined constants over the game, tweak them carefully otherwise it might introduce bugs
-\*/
-
-GC.recover={};
-GC.recover.fall= -0.45; //fall recover constant
-GC.recover.bdefend= -0.5; //bdefend recover constant
-
-GC.effect={};
-GC.effect.num_to_id= 300; //convert effect num to id
-GC.effect.duration= 3; //default effect lasting duration
-
-GC.character={};
-GC.character.bounceup={}; //bounce up during fall
-GC.character.bounceup.limit={};
-GC.character.bounceup.limit.xy= 13.4; //defined speed threshold to bounce up again
-GC.character.bounceup.limit.y= 11; //y threshold; will bounce if any one of xy,y is overed
-GC.character.bounceup.y= 4.25; //defined bounce up speed
-GC.character.bounceup.absorb= //how much dvx to absorb when bounce up
-{
-	9:1,
-	14:4,
-	20:10,
-	40:20
-}
-
-GC.defend={};
-GC.defend.injury={};
-GC.defend.injury.factor= 0.1; //defined defend injury factor
-GC.defend.break_limit= 40; //defined defend break
-GC.defend.absorb= //how much dvx to absorb when defence is broken
-{	//look up table
-	5:0,
-	15:5
-}
-
-GC.fall={};
-GC.fall.KO= 60; //defined KO
-GC.fall.wait180= //the wait of 180 depends on effect.dvy
-{	//lookup
-	//dvy:wait
-	7:1,
-	9:2,
-	11:3,
-	13:4,
-	15:5,
-	17:6
-}
-
-GC.friction={};
-GC.friction.fell=    //defined friction at the moment of fell onto ground
-{	//a lookup table
-	//speed:friction
-	2:0,
-	3:1,
-	5:2,
-	6:4, //smaller or equal to 6, value is 4
-	9:5,
-	13:7,
-	25:9 //guess entry
-}
-
-GC.min_speed= 1; //defined minimum speed
-
-GC.gravity= 1.7; //defined gravity
-
-GC.weapon={};
-GC.weapon.bounceup={}; //when a weapon falls onto ground
-GC.weapon.bounceup.limit= 8; //defined limit to bounce up again
-GC.weapon.bounceup.speed={};
-GC.weapon.bounceup.speed.y= -3.7; //defined bounce up speed
-GC.weapon.bounceup.speed.x= 3;
-GC.weapon.bounceup.speed.z= 1.5;
-GC.weapon.soft_bounceup={}; //when heavy weapon being hit by character punch
-GC.weapon.soft_bounceup.speed={};
-GC.weapon.soft_bounceup.speed.y= -2;
-
-GC.weapon.hit={}; //when a weapon hit others
-GC.weapon.hit.vx= -3; //absolute speed
-GC.weapon.hit.vy= 0;
-
-//GC.weapon.gain.factor.x= 1.1; //when a weapon is being hit at rest
-//GC.weapon.gain.factor.y= 1.8;
-
-GC.weapon.reverse={}; //when a weapon is being hit while travelling in air
-GC.weapon.reverse.factor={};
-GC.weapon.reverse.factor.vx= -0.4;
-GC.weapon.reverse.factor.vy= -2;
-GC.weapon.reverse.factor.vz= -0.4;
-
-GC.unspecified= -842150451; //0xCDCDCDCD, one kind of HEX label
-
-return G;
-});
-
-/*\
- * loader.js
- * 
- * loader is a requirejs plugin that loads content packages
-\*/
-
-define('LF/loader',['LF/packages','LF/global','F.core/util'],function(packages,global,Futil){
-
-	return {
-		load: function (name, require, load, config)
-		{
-			var path='';
-			var content={};
-			var manifest={};
-
-			if( config.isBuild)
-			{
-				load();
-				return ;
-			}
-
-			var first,count=0;
-			for( var i in packages)
-			{
-				if( count===0)
-					first=i;
-				count++;
-			}
-			if( count===1)
-			{
-				load_package(packages[first]);
-			}
-
-			function load_package(pack)
-			{
-				path=normalize_path(pack.path);
-				content.location = normalize_path(config.baseUrl)+path;
-				require( [filepath('manifest')], function(mani)
-				{
-					manifest=mani;
-					var manifest_schema=
-					{
-						"data":"string",
-						"resourcemap":"string!optional"
-					}
-					if( !validate(manifest_schema,manifest))
-					{
-						console.log('loader: error: manifest.js of '+path+' is not correct.');
-					}
-					require( [filepath(manifest.data)], load_data);
-					load_something('resourcemap');
-				});
-			}
-			function normalize_path(ppp)
-			{	//normalize a file path section
-				if( !ppp)
-					return '';
-				ppp=ppp.replace(/\\/g,'/');
-				if( ppp.charAt(ppp.length-1)!=='/')
-					ppp+='/';
-				if( ppp.charAt(0)==='/')
-					ppp=ppp.slice(1);
-				return ppp;
-			}
-			function filepath(ppp)
-			{
-				if( !ppp)
-					return '';
-				if( ppp.lastIndexOf('.js')===ppp.length-3)
-					ppp = ppp.slice(0,ppp.length-3);
-				var suf = path.indexOf('http')===0?'.js':'';
-				return path+ppp+suf;
-			}
-			function load_data(datalist)
-			{
-				function allow_load(OO)
-				{
-					if( typeof global.lazyload==='function')
-					{
-						if( !global.lazyload(OO))
-							return true;
-					}
-					else
-						return true;
-				}
-
-				var datafile_depend=[];
-
-				for( var i in datalist)
-				{
-					if( datalist[i] instanceof Array)
-					{
-						for( var j=0; j<datalist[i].length; j++)
-							if( datalist[i][j].file)
-							if( allow_load(datalist[i][j]))
-								datafile_depend.push(filepath(datalist[i][j].file));
-					}
-					else if( typeof datalist[i]==='object')
-					{
-						if( datalist[i].file)
-						if( allow_load(datalist[i]))
-							datafile_depend.push(filepath(datalist[i].file));
-					}
-				}
-
-				require( datafile_depend, function()
-				{
-					var gamedata=Futil.extend_object({},datalist);
-					var param = 0;
-
-					for( var i in datalist)
-					{
-						if( datalist[i] instanceof Array)
-						{
-							for( var j=0; j<datalist[i].length; j++)
-								if( datalist[i][j].file)
-								{
-									if( allow_load(datalist[i][j]))
-									{
-										gamedata[i][j].data = arguments[param];
-										param++;
-									}
-									else
-									{
-										gamedata[i][j].data = 'lazy';
-									}
-								}
-						}
-						else if( typeof datalist[i]==='object')
-						{
-							if( datalist[i].file)
-							{
-								if( allow_load(datalist[i]))
-								{
-									gamedata[i].data = arguments[param];
-									param++;
-								}
-								else
-								{
-									gamedata[i].data = 'lazy';
-								}
-							}
-						}
-					}
-
-					content.data=gamedata;
-					module_lazyload();
-					load_ready();
-				});
-			}
-			function load_something(thing)
-			{
-				require( [filepath(manifest[thing])], function(it){
-					content[thing] = it;
-					load_ready();
-				});
-			}
-			function load_ready()
-			{
-				var content_schema=
-				{
-					data:'object',
-					resourcemap:'object!optional',
-					location:'string'
-				}
-				if( validate(content_schema,content))
-					load(content); //make the require loader return
-			}
-			function module_lazyload()
-			{	//embed the lazyload module
-				if( typeof global.lazyload==='function')
-				{
-					content.data.object.load=function(ID,ready)
-					{
-						var objects=content.data.object;
-						var load_list=[];
-						var res_list=[];
-						for( var i=0; i<ID.length; i++)
-						{
-							var O; //search for the object
-							for( var j=0; j<objects.length; j++)
-								if( objects[j].id===ID[i])
-								{
-									O=objects[j];
-									break;
-								}
-							if( O && O.file && O.data==='lazy')
-							{
-								load_list.push(O);
-								res_list .push(filepath(O.file));
-							}
-						}
-						requirejs(res_list,function()
-						{
-							for( var i=0; i<arguments.length; i++)
-								load_list[i].data = arguments[i];
-							ready();
-						});
-					}
-				}
-			}
-
-			/** a simple JSON schema validator*/
-			function validate(schema,object)
-			{
-				var good=false;
-				if( object)
-				{
-					good=true;
-					for( var I in schema)
-					{
-						var sss = schema[I].split('!'),
-							type = sss[0],
-							option = sss[1] || '';
-						if( typeof object[I]===type) {
-							//good
-						}
-						else if (typeof object[I]==='undefined' && 
-									option && option==='optional') {
-							//still good
-						}
-						else {
-							good=false;
-							break;
-						}
-					}
-				}
-				return good;
-			}
-		},
-		normalize: function (name, normalize)
-		{
-			return name;
-		}
-	}
 });
 
 define('F.core/animator',[],function()
@@ -3316,7 +3316,7 @@ function(Futil)
 	}
 	AIcon.prototype.flush=function()
 	{
-		this.buf=[];
+		this.buf.length=0;
 	}
 	AIcon.prototype.type = 'AIcontroller';
 
@@ -4242,7 +4242,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				{
 					switch ($.combo_buffer.combo)
 					{
-						case 'def': case 'jump': case 'att': case 'run':
+						case 'def': case 'jump': case 'jump-att': case 'att': case 'run':
 							$.combo_buffer.combo = null;
 						break;
 						//other combo is not cleared
@@ -4282,6 +4282,9 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					case 'att': case 'run':
 						//cannot transfer across states
 						$.combo_buffer.combo = null;
+					break;
+					case 'jump-att': //jump-attack becomes attack across state transition
+						$.combo_buffer.combo = 'att';
 					break;
 				}
 			break;
@@ -4337,6 +4340,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					$.trans.frame(110, 10);
 				return 1;
 				case 'jump':
+				case 'jump-att':
 					if( $.hold.obj && $.hold.obj.type==='heavyweapon')
 					{
 						if( !$.proper('heavy_weapon_jump'))
@@ -4500,6 +4504,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				return 1;
 
 				case 'jump':
+				case 'jump-att':
 					if( $.hold.obj && $.hold.obj.type==='heavyweapon')
 					{
 						if( !$.proper('heavy_weapon_dash'))
@@ -4511,6 +4516,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 						}
 					}
 					$.trans.frame(213, 10);
+					if( K==='jump-att')
+						return 0; //keep the combo
 				return 1;
 
 				case 'att':
@@ -4817,6 +4824,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 					}
 				return 1; //always return true so that `att` is not re-fired next frame
 				case 'jump':
+				case 'jump-att':
 					if( $.frame.N===121)
 					if($.frame.D.cpoint.jaction)
 					{
@@ -5288,7 +5296,8 @@ function(livingobject, Global, Fcombodec, Futil, util)
 				{ name:'jump',	seq:['jump'],	clear_on_combo:false},
 				{ name:'att',	seq:['att'],	clear_on_combo:false},
 				{ name:'run',	seq:['right','right'],	maxtime:9},
-				{ name:'run',	seq:['left','left'],	maxtime:9}
+				{ name:'run',	seq:['left','left'],	maxtime:9},
+				{ name:'jump-att',seq:['jump','att'],	maxtime:0, clear_on_combo:false}
 				//plus those defined in Global.combo_list
 			];
 			$.combodec = new Fcombodec($.con, dec_con, combo_list.concat(Global.combo_list));
@@ -5452,10 +5461,10 @@ function(livingobject, Global, Fcombodec, Futil, util)
 			else
 				$.health.fall += GC.default.fall.value;
 			var fall=$.health.fall;
-			if ( 0<fall && fall<=20)
-				$.trans.frame(220, 20);
-			else if (20<fall && fall<=40 && $.ps.y<0)
+			if ($.ps.y<0 || $.ps.vy<0)
 				falldown();
+			else if ( 0<fall && fall<=20)
+				$.trans.frame(220, 20);
 			else if (20<fall && fall<=30)
 				$.trans.frame(222, 20);
 			else if (30<fall && fall<=40)
@@ -5469,6 +5478,7 @@ function(livingobject, Global, Fcombodec, Futil, util)
 		{
 			if( ITR.dvy===undefined) ef_dvy = GC.default.fall.dvy;
 			$.health.fall=0;
+			$.ps.vy=0;
 			var front = (attps.x > $.ps.x)===($.ps.dir==='right'); //attacked in front
 				 if( front && ITR.dvx < 0 && ITR.bdefend>=60)
 				$.trans.frame(186, 20);
@@ -8234,10 +8244,11 @@ Global)
 		}
 		if( funcon)
 		{
-			var Fcon = funcon;
-			Fcon.child.push ({
+			funcon.sync=true;
+			funcon.child.push ({
 				key: function(I,down)
 				{
+					var opaused = $.time.paused; //original pause state
 					if( down)
 					{
 						switch (I)
@@ -8271,12 +8282,26 @@ Global)
 							setTimeout(show_pause,4); //so that the 'pause' message blinks
 						}
 						else
+						{
 							$.pause_mess.hide();
+						}
+						if( opaused !== $.time.paused)
+						{	//state change
+							if( $.time.paused)
+							{
+								if( funcon.type==='touch')
+									funcon.paused(true);
+							}
+							else
+							{
+								if( funcon.type==='touch')
+									funcon.paused(false);
+							}
+						}
 					}
 				}
 			});
-			Fcon.sync=true;
-			return Fcon;
+			return funcon;
 		}
 	}
 
@@ -8399,18 +8424,22 @@ return keychanger;
 define('LF/touchcontroller',['LF/util'],function(util)
 {
 	var controllers=[];
-	var touches=[];
+	var touches=[], eventtype;
 	var locked=false;
 	function touch_fun(event)
 	{
+		eventtype = event.type;
 		touches = event.touches;
+		for( var i in controllers)
+			if( !controllers[i].sync)
+				controllers[i].fetch();
 		if( locked)
 			event.preventDefault();
 	}
 	setTimeout(function()
 	{
 		locked=true;
-	},5000);
+	},6000);
 	document.addEventListener('touchstart', touch_fun, false);
 	document.addEventListener('touchmove', touch_fun, false);
 	document.addEventListener('touchenter', touch_fun, false);
@@ -8423,24 +8452,34 @@ define('LF/touchcontroller',['LF/util'],function(util)
 			controllers[i].resize();
 	}, false);
 
-	function TC()
+	function TC(config)
 	{
 		var $=this;
-		$.state={ up:0,down:0,left:0,right:0,def:0,jump:0,att:0 };
-		$.button={
-			up:{label:'&uarr;'},down:{label:'&darr;'},left:{label:'&larr;'},right:{label:'&rarr;'},
-			def:{label:'D'},jump:{label:'J'},att:{label:'A'}
-		};
-		$.config=null;
+		$.config=config;
+		if( $.config.layout==='gamepad')
+		{
+			$.state={ up:0,down:0,left:0,right:0,def:0,jump:0,att:0 };
+			$.button={
+				up:{label:'&uarr;'},down:{label:'&darr;'},left:{label:'&larr;'},right:{label:'&rarr;'},
+				def:{label:'D'},jump:{label:'J'},att:{label:'A'}
+			};
+		}
+		else if( $.config.layout==='functionkey')
+		{
+			$.state={ F1:0,F2:0,F4:0,F7:0};
+			$.button={
+				F1:{label:'F1'},F2:{label:'F2'},F4:{label:'F4'},F7:{label:'F7'}
+			};
+		}
 		$.child=[];
-		$.sync=true; //only sync===true is supported
+		$.sync=true;
 		controllers.push(this);
 		for( var key in $.button)
 		{
 			var el = document.createElement('div');
 			document.getElementsByClassName('LFtouchControlHolder')[0].appendChild(el);
 			el.className = 'touchControllerButton';
-			el.innerHTML= '<span>'+$.button[key].label+'</span>';
+			el.innerHTML = '<span>'+$.button[key].label+'</span>';
 			$.button[key].el = el;
 		}
 		$.resize();
@@ -8450,54 +8489,144 @@ define('LF/touchcontroller',['LF/util'],function(util)
 		var $=this;
 		var w = window.innerWidth,
 			h = window.innerHeight;
-		var sizeA = 0.3,
-			sizeB = 0.25,
-			padL = 0.1,
-			padR = 0.2,
-			offy = 0,
-			R = 0.75;
-		if( h>w)
+		if( $.config.layout==='gamepad')
 		{
-			offy = h/2;
-			h = w/16*9;
+			var sizeA = 0.25,
+				sizeB = 0.20,
+				padL = 0.1,
+				padR = 0.2,
+				offy = 0,
+				R = 0.75;
+			if( h>w)
+			{
+				offy = h/2;
+				h = w/16*9*1.5;
+			}
+			sizeA = sizeA*h;
+			sizeB = sizeB*h;
+			$.button['up'].left = sizeA*padL;
+			$.button['up'].top = h/2-sizeA+offy;
+			$.button['up'].right = $.button['up'].left+sizeA*2;
+			$.button['up'].bottom = $.button['up'].top+sizeA*R;
+			$.button['down'].left = sizeA*padL;
+			$.button['down'].top = h/2+sizeA*(1-R)+offy;
+			$.button['down'].right = $.button['down'].left+sizeA*2;
+			$.button['down'].bottom = $.button['down'].top+sizeA*R;
+			$.button['left'].left = sizeA*padL;
+			$.button['left'].top = h/2-sizeA+offy;
+			$.button['left'].right = $.button['left'].left+sizeA*R;
+			$.button['left'].bottom = $.button['left'].top+sizeA*2;
+			$.button['right'].left = sizeA*(2-R+padL);
+			$.button['right'].top = h/2-sizeA+offy;
+			$.button['right'].right = $.button['right'].left+sizeA*R;
+			$.button['right'].bottom = $.button['right'].top+sizeA*2;
+			$.button['def'].left = w-sizeB*(1.5+padR);
+			$.button['def'].top = h/2+offy;
+			$.button['def'].right = $.button['def'].left+sizeB;
+			$.button['def'].bottom = $.button['def'].top+sizeB;
+			$.button['jump'].left = w-sizeB*(2+padR);
+			$.button['jump'].top = h/2-sizeB+offy;
+			$.button['jump'].right = $.button['jump'].left+sizeB;
+			$.button['jump'].bottom = $.button['jump'].top+sizeB;
+			$.button['att'].left = w-sizeB*(1+padR);
+			$.button['att'].top = h/2-sizeB+offy;
+			$.button['att'].right = $.button['att'].left+sizeB;
+			$.button['att'].bottom = $.button['att'].top+sizeB;
+			set_xy_wh($.button['up']);
+			set_xy_wh($.button['down']);
+			set_xy_wh($.button['left']);
+			set_xy_wh($.button['right']);
+			set_xy_wh($.button['def']);
+			set_xy_wh($.button['jump']);
+			set_xy_wh($.button['att']);
 		}
-		sizeA = sizeA*h;
-		sizeB = sizeB*h;
-		$.button['up'].left = sizeA*padL;
-		$.button['up'].top = h/2-sizeA+offy;
-		$.button['up'].right = $.button['up'].left+sizeA*2;
-		$.button['up'].bottom = $.button['up'].top+sizeA*R;
-		$.button['down'].left = sizeA*padL;
-		$.button['down'].top = h/2+sizeA*(1-R)+offy;
-		$.button['down'].right = $.button['down'].left+sizeA*2;
-		$.button['down'].bottom = $.button['down'].top+sizeA*R;
-		$.button['left'].left = sizeA*padL;
-		$.button['left'].top = h/2-sizeA+offy;
-		$.button['left'].right = $.button['left'].left+sizeA*R;
-		$.button['left'].bottom = $.button['left'].top+sizeA*2;
-		$.button['right'].left = sizeA*(2-R+padL);
-		$.button['right'].top = h/2-sizeA+offy;
-		$.button['right'].right = $.button['right'].left+sizeA*R;
-		$.button['right'].bottom = $.button['right'].top+sizeA*2;
-		$.button['def'].left = w-sizeB*(1.5+padR);
-		$.button['def'].top = h/2+offy;
-		$.button['def'].right = $.button['def'].left+sizeB;
-		$.button['def'].bottom = $.button['def'].top+sizeB;
-		$.button['jump'].left = w-sizeB*(2+padR);
-		$.button['jump'].top = h/2-sizeB+offy;
-		$.button['jump'].right = $.button['jump'].left+sizeB;
-		$.button['jump'].bottom = $.button['jump'].top+sizeB;
-		$.button['att'].left = w-sizeB*(1+padR);
-		$.button['att'].top = h/2-sizeB+offy;
-		$.button['att'].right = $.button['att'].left+sizeB;
-		$.button['att'].bottom = $.button['att'].top+sizeB;
-		set_xy_wh($.button['up']);
-		set_xy_wh($.button['down']);
-		set_xy_wh($.button['left']);
-		set_xy_wh($.button['right']);
-		set_xy_wh($.button['def']);
-		set_xy_wh($.button['jump']);
-		set_xy_wh($.button['att']);
+		else if( $.config.layout==='functionkey')
+		{
+		}
+	}
+	TC.prototype.paused=function(pause)
+	{
+		var $=this;
+		var w = window.innerWidth,
+			h = window.innerHeight;
+		if( $.config.layout==='functionkey')
+		{
+			var size = 0.08*(h<w?h:w),
+				offy = 0;
+			if( h>w)
+				offy = h/3;
+			if( pause)
+			{
+				var F1 = $.button['F1'],
+					F2 = $.button['F2'],
+					F4 = $.button['F4'],
+					F7 = $.button['F7'];
+				F1.left = w/3-size/2;
+				F1.right = w/3+size/2;
+				F1.top = h/4.5-size/2+offy;
+				F1.bottom = h/4.5+size/2+offy;
+				//
+				F2.left = F1.left+size*1.5;
+				F2.right = F1.right+size*1.5;
+				F4.left = F1.left+size*1.5*3;
+				F4.right = F1.right+size*1.5*3;
+				F7.left = F1.left+size*1.5*6;
+				F7.right = F1.right+size*1.5*6;
+				for( var i in {F1:0,F2:0,F4:0,F7:0})
+				{
+					$.button[i].top = F1.top;
+					$.button[i].bottom = F1.bottom;
+					show($.button[i]);
+					set_xy_wh($.button[i]);
+					$.button[i].disabled=30; //disable for 30 frames
+				}
+			}
+			else
+			{
+				var F1 = $.button['F1'];
+				F1.left = w/2-size/2;
+				F1.right = w/2+size/2;
+				F1.top = h/4.5-size/2+offy;
+				F1.bottom = h/4.5+size/2+offy;
+				set_xy_wh(F1);
+				show(F1);
+				F1.disabled=false;
+				for( var i in {F2:0,F4:0,F7:0})
+				{
+					for( var j in {left:0,top:0,right:0,bottom:0})
+						$.button[i][j] = F1[j];	
+					set_xy_wh($.button[i]);
+					hide($.button[i]);
+					$.button[i].disabled=true;
+				}
+			}
+		}
+	}
+	TC.prototype.hide=function()
+	{
+		var $=this;
+		for( var i in $.button)
+		{
+			hide($.button[i]);
+			$.button[i].disabled=true;
+		}
+	}
+	TC.prototype.show=function()
+	{
+		var $=this;
+		for( var i in $.button)
+		{
+			show($.button[i]);
+			$.button[i].disabled=false;
+		}
+	}
+	TC.prototype.restart=function()
+	{
+		var $=this;
+		if( $.config.layout==='functionkey')
+		{
+			this.paused(false);
+		}
 	}
 	function set_xy_wh(B)
 	{
@@ -8505,6 +8634,14 @@ define('LF/touchcontroller',['LF/util'],function(util)
 		B.el.style.top = B.top+'px';
 		B.el.style.width = (B.right-B.left)+'px';
 		B.el.style.height = (B.bottom-B.top)+'px';
+	}
+	function show(B)
+	{
+		B.el.style.visibility='visible';
+	}
+	function hide(B)
+	{
+		B.el.style.visibility='hidden';
 	}
 	function inbetween(x,L,R)
 	{
@@ -8533,6 +8670,12 @@ define('LF/touchcontroller',['LF/util'],function(util)
 		var $=this;
 		for( var key in $.button)
 		{
+			if( $.button[key].disabled)
+			{
+				if( typeof $.button[key].disabled==='number')
+					$.button[key].disabled--;
+				continue;
+			}
 			var down=false;
 			for (i=0; i<touches.length; i++)
 			{
@@ -8563,11 +8706,463 @@ define('LF/touchcontroller',['LF/util'],function(util)
 
 	return TC;
 });
+define('LF/manager',['LF/match','LF/util','LF/keychanger','LF/touchcontroller',
+'F.core/util','F.core/sprite','F.core/animator','F.core/controller','F.core/support'],
+function(Match,util,Keychanger,touchcontroller,
+Futil,Fsprite,Fanimator,Fcontroller,Fsupport)
+{
+
+function Manager(package)
+{
+	var sel = package.data.UI.data.character_selection;
+	var control0, control1, functionkey_control;
+	this.t = 0;
+	this.step = 0;
+	this.setting_computer = -1;
+	this.frame=function()
+	{
+		for( var i in this.player)
+		{
+			switch (this.player[i].step)
+			{
+				case 0:
+					if( this.step===0)
+						this.player[i].waiting.next_frame();
+					this.player[i].textbox[0].style.color = sel.text.color[this.t%2];
+				break;
+				case 1:
+					this.player[i].textbox[1].style.color = sel.text.color[this.t%2];
+				break;
+				case 2:
+					this.player[i].textbox[2].style.color = sel.text.color[this.t%2];
+				break;
+			}
+		}
+		this.t++;
+	}
+	this.create=function()
+	{
+		//
+		// save settings
+		//
+		var control_con1 =
+		{
+			up:'u',down:'m',left:'h',right:'k',def:',',jump:'i',att:'j'
+		};
+		var control_con2 =
+		{
+			up:'w',down:'x',left:'a',right:'d',def:'z',jump:'q',att:'s'
+		};
+		if( Fsupport.localStorage)
+		{
+			window.addEventListener('beforeunload',function(){
+				var obj =
+				{
+					controller:
+					[
+						control1.config, control2.config
+					]
+				}
+				Fsupport.localStorage.setItem('F.LF/settings',JSON.stringify(obj));
+			},false);
+
+			if( Fsupport.localStorage.getItem('F.LF/settings'))
+			{
+				var obj = JSON.parse(Fsupport.localStorage.getItem('F.LF/settings'));
+				if( obj.controller[0])
+					control_con1 = obj.controller[0];
+				if( obj.controller[1])
+					control_con2 = obj.controller[1];
+			}
+		}
+
+		//
+		// F.LF setup
+		//
+
+		//setup resource map
+		util.setup_resourcemap(package,Fsprite);
+
+		//controllers
+		var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
+		control0 = new Fcontroller(control_con1);
+		if( !support_touch)
+			control1 = new Fcontroller(control_con2);
+		else
+			control1 = new touchcontroller({layout:'gamepad'});
+		var functionkey_config =
+		{
+			'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6','F7':'F7','F8':'F8','F9':'F9','F10':'F10'
+		};
+		if( !support_touch)
+			functionkey_control = new Fcontroller(functionkey_config);
+		else
+			functionkey_control = new touchcontroller({layout:'functionkey'});
+
+		//key changer
+		var keychanger = util.div('keychanger');
+		hide(keychanger);
+		Keychanger(keychanger, [control0, control1]);
+		keychanger.style.backgroundColor='#FFF';
+		util.div('keychangerButton').onclick=function()
+		{
+			show_hide(keychanger);
+		}
+		//prepare
+		this.char_list = util.select_from(package.data.object,{type:'character'});
+		this.img_list = Futil.extract_array(this.char_list,'pic').pic;
+		this.img_list.waiting = sel.waiting.pic;
+		this.AI_list = package.data.AI;
+
+		//
+		// UI stuff
+		//
+		
+		//create UI for character selection
+		this.bg = new Fsprite({
+			canvas: util.div('characterSelection'),
+			img: package.data.UI.data.character_selection.pic,
+			wh: 'fit'
+		});
+		this.player = [];
+		for( var i=0; i<2; i++)
+		{
+			//sprite & animator
+			var sp = new Fsprite({
+				canvas: util.div('characterSelection'),
+				img: this.img_list,
+				wh: {x:sel.waiting.w,y:sel.waiting.h}
+			});
+			sp.set_x_y(sel.posx[i],sel.posy[i-i%4]);
+			var ani_config=
+			{
+				x:0, y:0,          //top left margin of the frames
+				w:sel.waiting.w, h:sel.waiting.h,//width, height of a frame
+				gx:2,gy:1,         //define a gx*gy grid of frames
+				tar:sp             //target F_sprite
+			}
+			var ani = new Fanimator(ani_config);
+			//text boxes
+			var textbox = [];
+			for( var j=0; j<3; j++)
+			{
+				var tbc=
+				{
+					canvas: util.div('characterSelection'),
+					wh: {x:sel.text.box_width,y:sel.text.box_height}
+				};
+				var box = new Fsprite(tbc);
+				box.set_x_y(sel.posx[i],sel.posy[i-i%4+j+1]);
+				box.el.classList.add('characterSelectionTextBox');
+				textbox.push(box.el);
+			}
+			//
+			this.player.push({
+				waiting:ani,
+				textbox:textbox,
+				box:sp,
+				selected:i+1,
+				selected_AI:0,
+				step:0,
+				name:i+1,
+				team:i+1,
+				type:''
+			});
+			this.show_step(i);
+		}
+		//create UI for gameplay
+		if( util.div('pauseMessage'))
+		{
+			this.pause_mess = new Fsprite({
+				div: util.div('pauseMessage'),
+				img: package.data.UI.data.pause,
+				wh: 'fit'
+			});
+			this.pause_mess.hide();
+		}
+		if( util.div('panel'))
+		{
+			this.panel=[];
+			for( var i=0; i<8; i++)
+			{
+				var pane = new Fsprite({
+					canvas: util.div('panel'),
+					img: package.data.UI.data.panel.pic,
+					wh: 'fit'
+				});
+				pane.set_x_y(package.data.UI.data.panel.pane_width*(i%4), package.data.UI.data.panel.pane_height*Math.floor(i/4));
+				this.panel.push(pane);
+			}
+		}
+		//
+		this.match_end();
+		this.start_match();
+	}
+	this.key=function(i,key)
+	{
+		if( key==='att')
+		{
+			if( this.step===0)
+			{
+				this.player[i].type='human';
+				this.player[i].step++;
+			}
+			else if( this.step===1)
+			{
+				if( this.player[i].type!=='human')
+					return;
+				i = this.setting_computer;
+				this.player[i].step++;
+			}
+
+			var finished=true;
+			for( var k=0; k<this.player.length; k++)
+				finished = finished && (this.player[k].step===0||this.player[k].step===3);
+			if( finished && this.step===0)
+			{
+				if( this.player[0].step===3 && this.player[1].step===3)
+				{
+					this.start_match();
+				}
+				else
+				{
+					this.setting_computer = (this.player[0].step===3?1:0);
+					i = this.setting_computer;
+					this.player[i].step = 0;
+					this.player[i].type = 'computer';
+					this.step++;
+				}
+			}
+			else if( finished && this.step===1)
+			{
+				if( this.player[0].step===3 && this.player[1].step===3)
+				{
+					this.start_match();
+				}
+			}
+		}
+		if( key==='jump')
+		{
+			if( this.step===1)
+			{
+				if( this.player[i].type!=='human')
+					return;
+				i = this.setting_computer;
+				if( this.player[i].step>0)
+					this.player[i].step--;
+			}
+			if( this.step===0)
+			{
+				if( this.player[i].step>0)
+					this.player[i].step--;
+			}
+		}
+		if( key==='right')
+		{
+			if( this.step===1)
+			{
+				if( this.player[i].type!=='human')
+					return;
+				i = this.setting_computer;
+			}
+			if( this.player[i].step===1)
+			{
+				this.player[i].selected++;
+				if( this.player[i].selected>=this.char_list.length)
+					this.player[i].selected = 0;
+			}
+			if( this.player[i].step===0 && this.player[i].type==='computer')
+			{
+				this.player[i].selected_AI++;
+				if( this.player[i].selected_AI>=this.AI_list.length)
+					this.player[i].selected_AI = 0;
+			}
+		}
+		if( key==='left')
+		{
+			if( this.step===1)
+			{
+				if( this.player[i].type!=='human')
+					return;
+				i = this.setting_computer;
+			}
+			if( this.player[i].step===1)
+			{
+				this.player[i].selected--;
+				if( this.player[i].selected<0)
+					this.player[i].selected = this.char_list.length-1;
+			}
+			if( this.player[i].step===0 && this.player[i].type==='computer')
+			{
+				this.player[i].selected_AI--;
+				if( this.player[i].selected_AI<0)
+					this.player[i].selected_AI = this.AI_list.length-1;
+			}
+		}
+		this.show_step(i);
+	}
+	this.show_step=function(i)
+	{
+		if( this.step===0)
+		{
+			switch (this.player[i].step)
+			{
+				case 0:
+					this.player[i].textbox[0].innerHTML = 'Join?';
+					this.player[i].textbox[1].innerHTML = '';
+					this.player[i].textbox[2].innerHTML = '';
+					this.player[i].box.switch_img('waiting');
+				break;
+				case 1:
+					this.player[i].textbox[0].style.color = sel.text.color[2];
+					this.player[i].textbox[0].innerHTML = this.player[i].name;
+					this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
+					this.player[i].textbox[2].innerHTML = '';
+					this.player[i].waiting.rewind();
+					this.player[i].box.switch_img(this.player[i].selected);
+				break;
+				case 2:
+					this.player[i].textbox[1].style.color = sel.text.color[2];
+					this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
+				break;
+				case 3:
+					this.player[i].textbox[2].style.color = sel.text.color[2];
+				break;
+			}
+		}
+		else if( this.step===1)
+		{
+			i = this.setting_computer;
+			switch (this.player[i].step)
+			{
+				case 0:
+					this.player[i].name = this.AI_list[this.player[i].selected_AI].name;
+					this.player[i].textbox[0].innerHTML = this.player[i].name;
+					this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
+					this.player[i].textbox[2].innerHTML = '';
+					this.player[i].waiting.rewind();
+					this.player[i].box.switch_img(this.player[i].selected);
+				break;
+				case 1:
+					this.player[i].textbox[0].style.color = sel.text.color[2];
+					this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
+					this.player[i].textbox[2].innerHTML = '';
+					this.player[i].box.switch_img(this.player[i].selected);
+				break;
+				case 2:
+					this.player[i].textbox[1].style.color = sel.text.color[2];
+					this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
+				break;
+				case 3:
+					this.player[i].textbox[2].style.color = sel.text.color[2];
+				break;
+			}
+		}
+	}
+	this.match_end=function(event)
+	{
+		show(util.div('characterSelection'));
+		hide(util.div('gameplay'));
+		if( functionkey_control.type==='touch')
+			functionkey_control.hide();
+
+		//create timer
+		var This=this;
+		this.step = 0;
+		this.seltimer = setInterval(function(){This.frame();},1000/12);
+		//create controller listener
+		control0.sync=false;
+		control1.sync=false;
+		control0.child=[{
+			key:function(K,D){if(D)This.key(0,K);}
+		}];
+		control1.child=[{
+			key:function(K,D){if(D)This.key(1,K);}
+		}];
+		//reset
+		this.step = 0;
+		for( var i=0; i<this.player.length; i++)
+		{
+			this.player[i].step = 0;
+			this.player[i].type = 'human';
+			this.player[i].name = i+1;
+			this.player[i].team = i+1;
+			this.show_step(i);
+		}
+	}
+	this.start_match=function()
+	{
+		hide(util.div('characterSelection'));
+		show(util.div('gameplay'));
+		if( functionkey_control.type==='touch')
+			functionkey_control.restart();
+
+		clearInterval(this.seltimer);
+
+		control0.sync=true;
+		control1.sync=true;
+		control0.child=[];
+		control1.child=[];
+		functionkey_control.child=[];
+
+		this.match = new Match
+		({
+			manager: this,
+			stage: util.div('floor'),
+			state: null,
+			config: null,
+			package: package
+		});
+
+		this.match.create
+		({
+			player:
+			[
+				{
+					controller: this.player[0].type==='human'?control0:this.AI_list[this.player[0].selected_AI].data,
+					datanum: this.player[0].selected,
+					team: this.player[0].team
+				},
+				{
+					controller: this.player[1].type==='human'?control1:this.AI_list[this.player[1].selected_AI].data,
+					datanum: this.player[1].selected,
+					team: this.player[1].team
+				}
+			],
+			control: functionkey_control,
+			set:
+			{
+				weapon: true
+			},
+			background: {id:1},
+			pause_mess: this.pause_mess
+		});
+	}
+	//constructor
+	this.create();
+}
+
+//util
+function show(div)
+{
+	div.style.display='';
+}
+function hide(div)
+{
+	div.style.display='none';
+}
+function show_hide(div)
+{
+	div.style.display= div.style.display===''?'none':'';
+}
+
+return Manager;
+});
 define('F.core/css!LF/application.css', ['F.core/css-embed'], 
 function(embed)
 {
 	embed(
-	'.LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:100;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus {  position:absolute;  left:0; top:106px;  width:100%; height:22px;  line-height:22px;  background:#000;  z-index:3; } .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; } .characterSelection {  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:10; } .characterSelectionTextBox {  font-family:Helvetica,sans;  font-weight:bold;  font-size:13px;  color:#FFF;  text-align:center;     -moz-transition:color 0.1s;     -webkit-transition:color 0.1s;     -o-transition:color 0.1s;     transition:color 0.1s; }'
+	'.LFroot {  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:100;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus {  position:absolute;  left:0; top:106px;  width:100%; height:22px;  line-height:22px;  background:#000;  z-index:3; } .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5;     transition:left 0.5s; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; } .characterSelection {  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:10; } .characterSelectionTextBox {  font-family:Helvetica,sans;  font-weight:bold;  font-size:13px;  color:#FFF;  text-align:center;     transition:color 0.1s; }'
 	);
 	return true;
 });
@@ -8583,13 +9178,11 @@ requirejs.config(
 	}
 });
 
-requirejs(['F.core/controller','F.core/sprite','F.core/support',
-'LF/loader!packages','LF/match','LF/keychanger','LF/touchcontroller',
-'F.core/sprite','F.core/animator','F.core/util',
+requirejs(['F.core/support',
+'LF/loader!packages','LF/manager',
 'LF/util','LF/global','F.core/css!LF/application.css'],
-function(Fcontroller,Fsprite,Fsupport,
-package,Match,Keychanger,touchcontroller,
-Fsprite,Fanimator,Futil,
+function(Fsupport,
+package,Manager,
 util,global){
 
 	if (typeof console === "undefined"){
@@ -8627,7 +9220,7 @@ util,global){
 	//
 	var UI_state=
 	{
-		maximized:undefined,
+		maximized:false,
 		wide:false
 	};
 	function resizer(ratio)
@@ -8641,9 +9234,55 @@ util,global){
 				ratio = ratioh<ratiow? ratioh:ratiow;
 				ratio = Math.floor(ratio*100)/100;
 			}
-			util.container.style[Fsupport.css2dtransform+'Origin']= '0 0';
-			util.container.style[Fsupport.css2dtransform]= 'scale('+ratio+','+ratio+') ';
+			var canx = window.innerWidth/2-parseInt(window.getComputedStyle(util.container,null).getPropertyValue('width'))/2*ratio;
+			if( ratio===1) canx=0;
+			if( Fsupport.css3dtransform)
+			{
+				util.container.style[Fsupport.css3dtransform+'Origin']= '0 0';
+				util.container.style[Fsupport.css3dtransform]=
+					'translate3d('+canx+'px,0,0) '+
+					'scale3d('+ratio+','+ratio+',1.0) ';
+			}
+			if( Fsupport.css2dtransform)
+			{
+				util.container.style[Fsupport.css2dtransform+'Origin']= '0 0';
+				util.container.style[Fsupport.css2dtransform]=
+					'translate('+canx+'px,0) '+
+					'scale('+ratio+','+ratio+') ';
+			}
 		}
+	}
+	function onresize()
+	{
+		if( window.innerWidth<global.application.window.width ||
+			window.innerHeight<global.application.window.height )
+		{
+			if( !UI_state.maximized)
+			{
+				util.div('maximizeButton').onclick();
+			}
+		}
+		if( UI_state.maximized)
+		{
+			if( window.innerWidth/window.innerHeight > 15/9)
+			{
+				if( !UI_state.wide)
+				{
+					UI_state.wide=true;
+					util.div().classList.add('wideWindow');
+					//double arrow symbol '&#8622;&#8596;'
+				}
+			}
+			else
+			{
+				if( UI_state.wide)
+				{
+					UI_state.wide=false;
+					util.div().classList.remove('wideWindow');
+				}
+			}
+		}
+		resizer();
 	}
 	util.div('maximizeButton').onclick=function()
 	{
@@ -8651,8 +9290,6 @@ util,global){
 		{
 			if( !UI_state.maximized)
 			{
-				if( UI_state.maximized===undefined)
-					window.addEventListener('resize', resizer, false);
 				UI_state.maximized=true;
 				this.firstChild.innerHTML='&#9724;';
 				if( util.div('backgroundScroll'))
@@ -8671,23 +9308,8 @@ util,global){
 			}
 		}
 	}
-	hide(util.div('wideWindowButton'));
-	util.div('wideWindowButton').onclick=function()
-	{
-		if( !UI_state.wide)
-		{
-			UI_state.wide=true;
-			util.div().classList.add('wideWindow');
-			this.firstChild.innerHTML='&#8622;';
-		}
-		else
-		{
-			UI_state.wide=false;
-			util.div().classList.remove('wideWindow');
-			this.firstChild.innerHTML='&#8596;';
-		}
-		resizer();
-	}
+	window.addEventListener('resize', onresize, false);
+	onresize();
 
 	//process parameters
 	var param = util.location_parameters();
@@ -8714,427 +9336,22 @@ util,global){
 		}
 	}
 
-	if( window.innerWidth<global.application.window.width ||
-		window.innerHeight<global.application.window.height )
-	{
-		util.div('maximizeButton').onclick();
-		if( window.innerWidth/window.innerHeight > 5/3)
-			util.div('wideWindowButton').onclick();
-	}
-
 	requirejs(['./buildinfo.js'],function(buildinfo){
 		util.div('footnote').innerHTML+=
 			(buildinfo.timestamp==='unbuilt'?'unbuilt demo':'built on: '+buildinfo.timestamp);
 	});
 
-	//
-	// save settings
-	//
-	var control_con1 =
-	{
-		up:'u',down:'m',left:'h',right:'k',def:',',jump:'i',att:'j'
-	};
-	var control_con2 =
-	{
-		up:'w',down:'x',left:'a',right:'d',def:'z',jump:'q',att:'s'
-	};
-	if( Fsupport.localStorage)
-	{
-		window.addEventListener('beforeunload',function(){
-			var obj =
-			{
-				controller:
-				[
-					control1.config, control2.config
-				]
-			}
-			Fsupport.localStorage.setItem('F.LF/settings',JSON.stringify(obj));
-		},false);
-
-		if( Fsupport.localStorage.getItem('F.LF/settings'))
-		{
-			var obj = JSON.parse(Fsupport.localStorage.getItem('F.LF/settings'));
-			if( obj.controller[0])
-				control_con1 = obj.controller[0];
-			if( obj.controller[1])
-				control_con2 = obj.controller[1];
-		}
-	}
-
-	//
-	// F.LF stuff
-	//
-
-	//setup resource map
-	util.setup_resourcemap(package,Fsprite);
-
-	//controllers
-	var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
-	var control0 = new Fcontroller(control_con1);
-	var control1;
-	if( !support_touch)
-		control1 = new Fcontroller(control_con2);
-	else
-		control1 = new touchcontroller();
-	var funcon_config =
-	{
-		'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6','F7':'F7','F8':'F8','F9':'F9','F10':'F10'
-	};
-	var funcon = new Fcontroller(funcon_config);
-
-	//key changer
-	var keychanger = util.div('keychanger');
-	hide(keychanger);
-	Keychanger(keychanger, [control0, control1]);
-	keychanger.style.backgroundColor='#FFF';
-	util.div('keychangerButton').onclick=function()
-	{
-		show_hide(keychanger);
-	}
-
 	//util
-	function hide(div)
-	{
-		div.style.display='none';
-	}
 	function show(div)
 	{
 		div.style.display='';
 	}
-	function show_hide(div)
+	function hide(div)
 	{
-		div.style.display= div.style.display===''?'none':'';
+		div.style.display='none';
 	}
 
-	var manager = new Manager();
-	manager.create();
-
-	function Manager()
-	{
-		var sel = package.data.UI.data.character_selection;
-		this.t = 0;
-		this.step = 0;
-		this.setting_computer = -1;
-		this.frame=function()
-		{
-			for( var i in this.player)
-			{
-				switch (this.player[i].step)
-				{
-					case 0:
-						this.player[i].waiting.next_frame();
-						this.player[i].textbox[0].style.color = sel.text.color[this.t%2];
-					break;
-					case 1:
-						this.player[i].textbox[1].style.color = sel.text.color[this.t%2];
-					break;
-					case 2:
-						this.player[i].textbox[2].style.color = sel.text.color[this.t%2];
-					break;
-				}
-			}
-			this.t++;
-		}
-		this.create=function()
-		{
-			//prepare
-			this.char_list = util.select_from(package.data.object,{type:'character'});
-			this.img_list = Futil.extract_array(this.char_list,'pic').pic;
-			this.img_list.waiting = sel.waiting.pic;
-
-			//create UI for character selection
-			this.bg = new Fsprite({
-				canvas: util.div('characterSelection'),
-				img: package.data.UI.data.character_selection.pic,
-				wh: 'fit'
-			});
-			this.player = [];
-			for( var i=0; i<2; i++)
-			{
-				//sprite & animator
-				var sp = new Fsprite({
-					canvas: util.div('characterSelection'),
-					img: this.img_list,
-					wh: {x:sel.waiting.w,y:sel.waiting.h}
-				});
-				sp.set_x_y(sel.posx[i],sel.posy[i-i%4]);
-				var ani_config=
-				{
-					x:0, y:0,          //top left margin of the frames
-					w:sel.waiting.w, h:sel.waiting.h,//width, height of a frame
-					gx:2,gy:1,         //define a gx*gy grid of frames
-					tar:sp             //target F_sprite
-				}
-				var ani = new Fanimator(ani_config);
-				//text boxes
-				var textbox = [];
-				for( var j=0; j<3; j++)
-				{
-					var tbc=
-					{
-						canvas: util.div('characterSelection'),
-						wh: {x:sel.text.box_width,y:sel.text.box_height}
-					};
-					var box = new Fsprite(tbc);
-					box.set_x_y(sel.posx[i],sel.posy[i-i%4+j+1]);
-					box.el.classList.add('characterSelectionTextBox');
-					textbox.push(box.el);
-				}
-				//
-				this.player.push({
-					waiting:ani,
-					textbox:textbox,
-					box:sp,
-					selected:i+1,
-					step:0,
-					name:i+1,
-					team:i+1,
-					type:'human'
-				});
-				this.show_step(i);
-			}
-			//create UI for gameplay
-			if( util.div('pauseMessage'))
-			{
-				this.pause_mess = new Fsprite({
-					div: util.div('pauseMessage'),
-					img: package.data.UI.data.pause,
-					wh: 'fit'
-				});
-				this.pause_mess.hide();
-			}
-			if( util.div('panel'))
-			{
-				this.panel=[];
-				for( var i=0; i<8; i++)
-				{
-					var pane = new Fsprite({
-						canvas: util.div('panel'),
-						img: package.data.UI.data.panel.pic,
-						wh: 'fit'
-					});
-					pane.set_x_y(package.data.UI.data.panel.pane_width*(i%4), package.data.UI.data.panel.pane_height*Math.floor(i/4));
-					this.panel.push(pane);
-				}
-			}
-			//
-			this.match_end();
-			this.start_match();
-		}
-		this.key=function(i,key)
-		{
-			if( key==='att')
-			{
-				if( this.step===0)
-				{
-					this.player[i].type='human';
-					this.player[i].step++;
-				}
-				else if( this.step===1)
-				{
-					if( this.player[i].type!=='human')
-						return;
-					i = this.setting_computer;
-					this.player[i].step++;
-				}
-
-				var finished=true;
-				for( var k=0; k<this.player.length; k++)
-					finished = finished && (this.player[k].step===0||this.player[k].step===3);
-				if( finished && this.step===0)
-				{
-					if( this.player[0].step===3 && this.player[1].step===3)
-					{
-						this.start_match();
-					}
-					else
-					{
-						this.setting_computer = (this.player[0].step===3?1:0);
-						i = this.setting_computer;
-						this.player[i].step = 1;
-						this.player[i].type = 'computer';
-						this.player[i].AI = package.data.AI[0].data;
-						this.player[i].name = package.data.AI[0].name;
-						this.step++;
-					}
-				}
-				else if( finished && this.step===1)
-				{
-					if( this.player[0].step===3 && this.player[1].step===3)
-					{
-						this.start_match();
-					}
-				}
-			}
-			if( key==='jump')
-			{
-				if( this.step===1)
-				{
-					if( this.player[i].type!=='human')
-						return;
-					i = this.setting_computer;
-					if( this.player[i].step>1)
-						this.player[i].step--;
-				}
-				if( this.step===0)
-				{
-					if( this.player[i].step>0)
-						this.player[i].step--;
-				}
-			}
-			if( key==='right')
-			{
-				if( this.step===1)
-				{
-					if( this.player[i].type!=='human')
-						return;
-					i = this.setting_computer;
-				}
-				if( this.player[i].step===1)
-					this.player[i].selected++;
-				if( this.player[i].selected>=this.char_list.length)
-					this.player[i].selected = 0;
-			}
-			if( key==='left')
-			{
-				if( this.step===1)
-				{
-					if( this.player[i].type!=='human')
-						return;
-					i = this.setting_computer;
-				}
-				if( this.player[i].step===1)
-					this.player[i].selected--;
-				if( this.player[i].selected<0)
-					this.player[i].selected = this.char_list.length-1;
-			}
-			this.show_step(i);
-		}
-		this.show_step=function(i)
-		{
-			if( this.step===0)
-			{
-				switch (this.player[i].step)
-				{
-					case 0:
-						this.player[i].textbox[0].innerHTML = 'Join?';
-						this.player[i].textbox[1].innerHTML = '';
-						this.player[i].textbox[2].innerHTML = '';
-						this.player[i].box.switch_img('waiting');
-					break;
-					case 1:
-						this.player[i].textbox[0].style.color = sel.text.color[2];
-						this.player[i].textbox[0].innerHTML = this.player[i].name;
-						this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
-						this.player[i].textbox[2].innerHTML = '';
-						this.player[i].waiting.rewind();
-						this.player[i].box.switch_img(this.player[i].selected);
-					break;
-					case 2:
-						this.player[i].textbox[1].style.color = sel.text.color[2];
-						this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
-					break;
-					case 3:
-						this.player[i].textbox[2].style.color = sel.text.color[2];
-					break;
-				}
-			}
-			else if( this.step===1)
-			{
-				i = this.setting_computer;
-				switch (this.player[i].step)
-				{
-					case 1:
-						this.player[i].textbox[0].style.color = sel.text.color[2];
-						this.player[i].textbox[0].innerHTML = this.player[i].name;
-						this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
-						this.player[i].textbox[2].innerHTML = '';
-						this.player[i].waiting.rewind();
-						this.player[i].box.switch_img(this.player[i].selected);
-					break;
-					case 2:
-						this.player[i].textbox[1].style.color = sel.text.color[2];
-						this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
-					break;
-					case 3:
-						this.player[i].textbox[2].style.color = sel.text.color[2];
-					break;
-				}
-			}
-		}
-		this.match_end=function(event)
-		{
-			show(util.div('characterSelection'));
-			hide(util.div('gameplay'));
-
-			//create timer
-			var This=this;
-			this.step = 0;
-			this.seltimer = setInterval(function(){This.frame();},1000/12);
-			//create controller listener
-			control0.sync=false;
-			control1.sync=false;
-			control0.child=[{
-				key:function(K,D){if(D)This.key(0,K);}
-			}];
-			control1.child=[{
-				key:function(K,D){if(D)This.key(1,K);}
-			}];
-			//reset
-			this.step = 0;
-			for( var i=0; i<this.player.length; i++)
-			{
-				this.player[i].step = 0;
-				this.show_step(i);
-			}
-		}
-		this.start_match=function()
-		{
-			hide(util.div('characterSelection'));
-			show(util.div('gameplay'));
-
-			clearInterval(this.seltimer);
-
-			control0.sync=true;
-			control1.sync=true;
-			control0.child=[];
-			control1.child=[];
-			funcon.child=[];
-
-			this.match = new Match
-			({
-				manager: this,
-				stage: util.div('floor'),
-				state: null,
-				config: null,
-				package: package
-			});
-
-			this.match.create
-			({
-				player:
-				[
-					{
-						controller: this.player[0].type==='human'?control0:this.player[0].AI,
-						datanum: this.player[0].selected,
-						team: this.player[0].team
-					},
-					{
-						controller: this.player[1].type==='human'?control1:this.player[1].AI,
-						datanum: this.player[1].selected,
-						team: this.player[1].team
-					}
-				],
-				control: funcon,
-				set:
-				{
-					weapon: true
-				},
-				background: {id:1},
-				pause_mess: this.pause_mess
-			});
-		}
-	}
+	var manager = new Manager(package);
 
 });
 

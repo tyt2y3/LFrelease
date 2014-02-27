@@ -34,7 +34,8 @@ define({
 
 	AI:
 	[
-		{type:'AIscript', file:'AI/Crusher.js', name:'Crusher 1.0'}
+		{type:'AIscript', file:'AI/Crusher.js', name:'CRUSHER 1.0'},
+		{type:'AIscript', file:'AI/Challangar.js', name:'CHALLANGAR 1.0'}
 	],
 
 	file_editing: {},
