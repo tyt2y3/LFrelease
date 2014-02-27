@@ -8473,6 +8473,7 @@ define('LF/touchcontroller',['LF/util'],function(util)
 		}
 		$.child=[];
 		$.sync=true;
+		$.pause_state=false;
 		controllers.push(this);
 		for( var key in $.button)
 		{
@@ -8542,6 +8543,7 @@ define('LF/touchcontroller',['LF/util'],function(util)
 		}
 		else if( $.config.layout==='functionkey')
 		{
+			$.paused($.pause_state);
 		}
 	}
 	TC.prototype.paused=function(pause)
@@ -8549,6 +8551,7 @@ define('LF/touchcontroller',['LF/util'],function(util)
 		var $=this;
 		var w = window.innerWidth,
 			h = window.innerHeight;
+		this.pause_state=pause;
 		if( $.config.layout==='functionkey')
 		{
 			var size = 0.08*(h<w?h:w),
