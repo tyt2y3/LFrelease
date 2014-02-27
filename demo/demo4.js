@@ -1976,6 +1976,12 @@ sprite.resolve_resource=function(res)
 	return res;
 }
 
+sprite.preload_image=function(imgpath)
+{
+	var img = new Image();
+	img.src = sprite.resolve_resource(imgpath);
+}
+
 /*\
  * sprite.set_wh
  [ method ]
@@ -7829,22 +7835,12 @@ Global)
 			background: {id:1}
 		} */
 		var $=this;
-		var char_list=[];
+		var data_ids=[];
 		for( var i=0; i<setting.player.length; i++)
 		{
-			var name = util.filename($.data.object[setting.player[i].datanum].file);
-			var objects = util.select_from($.data.object,function(O){
-					if( !O.file) return;
-					var file = util.filename(O.file);
-					if( file.lastIndexOf('_')!==-1)
-						file = file.slice(0,file.lastIndexOf('_'));
-					return file===name;
-				});
-
-			/** if `deep.js` is of type character, any files matching `deep_*` will also be lazy loaded
-				here we have to load all characters and associated data files
-			 */
-			char_list = char_list.concat(Futil.extract_array(Futil.make_array(objects),'id').id);
+			//(lazy) now load all characters and associated data files
+			data_ids.push($.data.object[setting.player[i].datanum].id);
+			data_ids = data_ids.concat(Futil.extract_array($.data.object[setting.player[i].datanum].pack,'id').id);
 		}
 		if( !setting.set) setting.set={};
 
@@ -7860,7 +7856,7 @@ Global)
 		$.tasks = []; //pending tasks
 		$.AIscript = [];
 
-		this.data.object.load(char_list,function()
+		this.data.object.load(data_ids,function()
 		{
 			if( setting.player)
 				$.create_characters(setting.player);
@@ -7985,7 +7981,7 @@ Global)
 		if( $.panel)
 			$.show_hp();
 		//AI script runs at a lower framerate, and is still very reactive
-		if( $.time.t%2===0)
+		if( $.time.t%3===0)
 			for( var i=0; i<$.AIscript.length; i++)
 				$.AIscript[i].TU();
 	}
@@ -8078,7 +8074,47 @@ Global)
 		{
 			var player = players[i];
 			var pdata = $.data.object[player.datanum].data;
-
+			preload_pack_images($.data.object[player.datanum]);
+			var controller = setup_controller(player);
+			//create character
+			var char = new factory.character(char_config, pdata, player.id);
+			if( controller.type==='AIcontroller')
+			{
+				$.AIscript.push(new player.controller(char,$,controller));
+			}
+			//positioning
+			char.set_pos( pos[i].x, pos[i].y, pos[i].z); //TODO: random player placements
+			var uid = $.scene.add(char);
+			$.character[uid] = char;
+			//pane
+			if( $.panel)
+			{
+				create_pane(i);
+			}
+		}
+		function preload_pack_images(char)
+		{
+			for( var j=0; j<char.pack.length; j++)
+			{
+				var obj = char.pack[j].data;
+				if( obj.bmp && obj.bmp.file)
+				{
+					for( var k=0; k<obj.bmp.file.length; k++)
+					{
+						var file = obj.bmp.file[k];
+						for( var m in file)
+						{
+							if( typeof file[m]==='string' && m.indexOf('file')===0)
+							{
+								Fsprite.preload_image(file[m]);
+							}
+						}
+					}
+				}
+			}
+		}
+		function setup_controller(player)
+		{
 			var controller;
 			switch (player.controller.type)
 			{
@@ -8091,44 +8127,36 @@ Global)
 			}
 			char_config.controller = controller;
 			char_config.team = player.team;
-			var char = new factory.character(char_config, pdata, player.id);
-			if( controller.type==='AIcontroller')
-			{
-				$.AIscript.push(new player.controller(char,$,controller));
-			}
-			char.set_pos( pos[i].x, pos[i].y, pos[i].z); //TODO: proper player placements
-			var uid = $.scene.add(char);
-			$.character[uid] = char;
-			//pane
-			if( $.panel)
-			{
-				var spic = new Fsprite({
-					canvas: util.div('panel'),
-					img: pdata.bmp.small,
-					wh: 'fit'
-				});
-				var X = $.data.UI.data.panel.pane_width*(i%4),
-					Y = $.data.UI.data.panel.pane_height*Math.floor(i/4);
-				spic.set_x_y( X+$.data.UI.data.panel.x, Y+$.data.UI.data.panel.y);
-				$.panel[i].uid = uid;
-				$.panel[i].spic = spic;
-				$.panel[i].hp_bound = new Fsprite({canvas: util.div('panel')});
-				$.panel[i].hp_bound.set_x_y( X+$.data.UI.data.panel.hpx, Y+$.data.UI.data.panel.hpy);
-				$.panel[i].hp_bound.set_w_h( $.data.UI.data.panel.hpw, $.data.UI.data.panel.hph);
-				$.panel[i].hp_bound.el.style.background = $.data.UI.data.panel.hp_dark;
-				$.panel[i].hp = new Fsprite({canvas: util.div('panel')});
-				$.panel[i].hp.set_x_y( X+$.data.UI.data.panel.hpx, Y+$.data.UI.data.panel.hpy);
-				$.panel[i].hp.set_w_h( $.data.UI.data.panel.hpw, $.data.UI.data.panel.hph);
-				$.panel[i].hp.el.style.background = $.data.UI.data.panel.hp_bright;
-				$.panel[i].mp_bound = new Fsprite({canvas: util.div('panel')});
-				$.panel[i].mp_bound.set_x_y( X+$.data.UI.data.panel.mpx, Y+$.data.UI.data.panel.mpy);
-				$.panel[i].mp_bound.set_w_h( $.data.UI.data.panel.mpw, $.data.UI.data.panel.mph);
-				$.panel[i].mp_bound.el.style.background = $.data.UI.data.panel.mp_dark;
-				$.panel[i].mp = new Fsprite({canvas: util.div('panel')});
-				$.panel[i].mp.set_x_y( X+$.data.UI.data.panel.mpx, Y+$.data.UI.data.panel.mpy);
-				$.panel[i].mp.set_w_h( $.data.UI.data.panel.mpw, $.data.UI.data.panel.mph);
-				$.panel[i].mp.el.style.background = $.data.UI.data.panel.mp_bright;
-			}
+			return controller;
+		}
+		function create_pane(i)
+		{
+			var spic = new Fsprite({
+				canvas: util.div('panel'),
+				img: pdata.bmp.small,
+				wh: 'fit'
+			});
+			var X = $.data.UI.data.panel.pane_width*(i%4),
+				Y = $.data.UI.data.panel.pane_height*Math.floor(i/4);
+			spic.set_x_y( X+$.data.UI.data.panel.x, Y+$.data.UI.data.panel.y);
+			$.panel[i].uid = uid;
+			$.panel[i].spic = spic;
+			$.panel[i].hp_bound = new Fsprite({canvas: util.div('panel')});
+			$.panel[i].hp_bound.set_x_y( X+$.data.UI.data.panel.hpx, Y+$.data.UI.data.panel.hpy);
+			$.panel[i].hp_bound.set_w_h( $.data.UI.data.panel.hpw, $.data.UI.data.panel.hph);
+			$.panel[i].hp_bound.el.style.background = $.data.UI.data.panel.hp_dark;
+			$.panel[i].hp = new Fsprite({canvas: util.div('panel')});
+			$.panel[i].hp.set_x_y( X+$.data.UI.data.panel.hpx, Y+$.data.UI.data.panel.hpy);
+			$.panel[i].hp.set_w_h( $.data.UI.data.panel.hpw, $.data.UI.data.panel.hph);
+			$.panel[i].hp.el.style.background = $.data.UI.data.panel.hp_bright;
+			$.panel[i].mp_bound = new Fsprite({canvas: util.div('panel')});
+			$.panel[i].mp_bound.set_x_y( X+$.data.UI.data.panel.mpx, Y+$.data.UI.data.panel.mpy);
+			$.panel[i].mp_bound.set_w_h( $.data.UI.data.panel.mpw, $.data.UI.data.panel.mph);
+			$.panel[i].mp_bound.el.style.background = $.data.UI.data.panel.mp_dark;
+			$.panel[i].mp = new Fsprite({canvas: util.div('panel')});
+			$.panel[i].mp.set_x_y( X+$.data.UI.data.panel.mpx, Y+$.data.UI.data.panel.mpy);
+			$.panel[i].mp.set_w_h( $.data.UI.data.panel.mpw, $.data.UI.data.panel.mph);
+			$.panel[i].mp.el.style.background = $.data.UI.data.panel.mp_bright;
 		}
 	}
 
@@ -8289,12 +8317,12 @@ Global)
 						{	//state change
 							if( $.time.paused)
 							{
-								if( funcon.type==='touch')
+								if( funcon.paused)
 									funcon.paused(true);
 							}
 							else
 							{
-								if( funcon.type==='touch')
+								if( funcon.paused)
 									funcon.paused(false);
 							}
 						}
@@ -8492,7 +8520,7 @@ define('LF/touchcontroller',['LF/util'],function(util)
 			h = window.innerHeight;
 		if( $.config.layout==='gamepad')
 		{
-			var sizeA = 0.25,
+			var sizeA = 0.20,
 				sizeB = 0.20,
 				padL = 0.1,
 				padR = 0.2,
@@ -8505,41 +8533,48 @@ define('LF/touchcontroller',['LF/util'],function(util)
 			}
 			sizeA = sizeA*h;
 			sizeB = sizeB*h;
-			$.button['up'].left = sizeA*padL;
-			$.button['up'].top = h/2-sizeA+offy;
-			$.button['up'].right = $.button['up'].left+sizeA*2;
-			$.button['up'].bottom = $.button['up'].top+sizeA*R;
-			$.button['down'].left = sizeA*padL;
-			$.button['down'].top = h/2+sizeA*(1-R)+offy;
-			$.button['down'].right = $.button['down'].left+sizeA*2;
-			$.button['down'].bottom = $.button['down'].top+sizeA*R;
-			$.button['left'].left = sizeA*padL;
-			$.button['left'].top = h/2-sizeA+offy;
-			$.button['left'].right = $.button['left'].left+sizeA*R;
-			$.button['left'].bottom = $.button['left'].top+sizeA*2;
-			$.button['right'].left = sizeA*(2-R+padL);
-			$.button['right'].top = h/2-sizeA+offy;
-			$.button['right'].right = $.button['right'].left+sizeA*R;
-			$.button['right'].bottom = $.button['right'].top+sizeA*2;
-			$.button['def'].left = w-sizeB*(1.5+padR);
-			$.button['def'].top = h/2+offy;
-			$.button['def'].right = $.button['def'].left+sizeB;
-			$.button['def'].bottom = $.button['def'].top+sizeB;
-			$.button['jump'].left = w-sizeB*(2+padR);
-			$.button['jump'].top = h/2-sizeB+offy;
-			$.button['jump'].right = $.button['jump'].left+sizeB;
-			$.button['jump'].bottom = $.button['jump'].top+sizeB;
-			$.button['att'].left = w-sizeB*(1+padR);
-			$.button['att'].top = h/2-sizeB+offy;
-			$.button['att'].right = $.button['att'].left+sizeB;
-			$.button['att'].bottom = $.button['att'].top+sizeB;
-			set_xy_wh($.button['up']);
-			set_xy_wh($.button['down']);
-			set_xy_wh($.button['left']);
-			set_xy_wh($.button['right']);
-			set_xy_wh($.button['def']);
-			set_xy_wh($.button['jump']);
-			set_xy_wh($.button['att']);
+			var Bup = $.button['up'],
+				Bdown = $.button['down'],
+				Bleft = $.button['left'],
+				Bright= $.button['right'],
+				Bdef = $.button['def'],
+				Bjump = $.button['jump'],
+				Batt = $.button['att'];
+			Bup.left = sizeA*padL;
+			Bup.top = h/2-sizeA+offy;
+			Bup.right = Bup.left+sizeA*2;
+			Bup.bottom = Bup.top+sizeA*R;
+			Bdown.left = sizeA*padL;
+			Bdown.top = h/2+sizeA*(1-R)+offy;
+			Bdown.right = Bdown.left+sizeA*2;
+			Bdown.bottom = Bdown.top+sizeA*R;
+			Bleft.left = sizeA*padL;
+			Bleft.top = h/2-sizeA+offy;
+			Bleft.right = Bleft.left+sizeA*R;
+			Bleft.bottom = Bleft.top+sizeA*2;
+			Bright.left = sizeA*(2-R+padL);
+			Bright.top = h/2-sizeA+offy;
+			Bright.right = Bright.left+sizeA*R;
+			Bright.bottom = Bright.top+sizeA*2;
+			Bdef.left = w-sizeB*(1.5+padR);
+			Bdef.top = h/2+offy;
+			Bdef.right = Bdef.left+sizeB;
+			Bdef.bottom = Bdef.top+sizeB;
+			Bjump.left = w-sizeB*(2+padR);
+			Bjump.top = h/2-sizeB+offy;
+			Bjump.right = Bjump.left+sizeB;
+			Bjump.bottom = Bjump.top+sizeB;
+			Batt.left = w-sizeB*(1+padR);
+			Batt.top = h/2-sizeB+offy;
+			Batt.right = Batt.left+sizeB;
+			Batt.bottom = Batt.top+sizeB;
+			set_xy_wh(Bup);
+			set_xy_wh(Bdown);
+			set_xy_wh(Bleft);
+			set_xy_wh(Bright);
+			set_xy_wh(Bdef);
+			set_xy_wh(Bjump);
+			set_xy_wh(Batt);
 		}
 		else if( $.config.layout==='functionkey')
 		{
@@ -8555,17 +8590,22 @@ define('LF/touchcontroller',['LF/util'],function(util)
 		if( $.config.layout==='functionkey')
 		{
 			var size = 0.08*(h<w?h:w),
-				offy = 0;
+				offy = 0,
+				offx = 0;
 			if( h>w)
-				offy = h/3;
+			{
+				offy = h/3.5;
+				offx = -w/4;
+			}
 			if( pause)
 			{
+				//expand the collection
 				var F1 = $.button['F1'],
 					F2 = $.button['F2'],
 					F4 = $.button['F4'],
 					F7 = $.button['F7'];
-				F1.left = w/3-size/2;
-				F1.right = w/3+size/2;
+				F1.left = w/3-size/2+offx;
+				F1.right = w/3+size/2+offx;
 				F1.top = h/4.5-size/2+offy;
 				F1.bottom = h/4.5+size/2+offy;
 				//
@@ -8717,32 +8757,38 @@ Futil,Fsprite,Fanimator,Fcontroller,Fsupport)
 
 function Manager(package)
 {
+	//organize package
+	for( var i=0; i<package.data.object.length; i++)
+	{
+		if( package.data.object[i].type==='character')
+		{
+			//if `deep.js` is of type character, select all files matching `deep_*`
+			var name = util.filename(package.data.object[i].file);
+			var objects = util.select_from(package.data.object,function(O){
+				if( !O.file) return false;
+				var file = util.filename(O.file);
+				if( file===name) return false;
+				if( file.lastIndexOf('_')!==-1)
+					file = file.slice(0,file.lastIndexOf('_'));
+				return file===name;
+			});
+			objects = Futil.make_array(objects);
+			package.data.object[i].pack = objects; //each character has a specialattack pack
+		}
+	}
+	
 	var sel = package.data.UI.data.character_selection;
 	var control0, control1, functionkey_control;
-	this.t = 0;
-	this.step = 0;
-	this.setting_computer = -1;
-	this.frame=function()
-	{
-		for( var i in this.player)
-		{
-			switch (this.player[i].step)
-			{
-				case 0:
-					if( this.step===0)
-						this.player[i].waiting.next_frame();
-					this.player[i].textbox[0].style.color = sel.text.color[this.t%2];
-				break;
-				case 1:
-					this.player[i].textbox[1].style.color = sel.text.color[this.t%2];
-				break;
-				case 2:
-					this.player[i].textbox[2].style.color = sel.text.color[this.t%2];
-				break;
-			}
-		}
-		this.t++;
-	}
+	var t = 0,
+		step = 0,
+		setting_computer = -1,
+		char_list,
+		img_list,
+		AI_list,
+		player,
+		pause_mess,
+		timer;
+	
 	this.create=function()
 	{
 		//
@@ -8788,11 +8834,15 @@ function Manager(package)
 
 		//controllers
 		var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
+		if( support_touch)
+			hide(util.div('windowCaptionButtonBar'));
 		control0 = new Fcontroller(control_con1);
 		if( !support_touch)
 			control1 = new Fcontroller(control_con2);
 		else
 			control1 = new touchcontroller({layout:'gamepad'});
+		control0.sync=true;
+		control1.sync=true;
 		var functionkey_config =
 		{
 			'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6','F7':'F7','F8':'F8','F9':'F9','F10':'F10'
@@ -8811,29 +8861,30 @@ function Manager(package)
 		{
 			show_hide(keychanger);
 		}
+
 		//prepare
-		this.char_list = util.select_from(package.data.object,{type:'character'});
-		this.img_list = Futil.extract_array(this.char_list,'pic').pic;
-		this.img_list.waiting = sel.waiting.pic;
-		this.AI_list = package.data.AI;
+		char_list = util.select_from(package.data.object,{type:'character'});
+		img_list = Futil.extract_array(char_list,'pic').pic;
+		img_list.waiting = sel.waiting.pic;
+		AI_list = package.data.AI;
 
 		//
 		// UI stuff
 		//
-		
+
 		//create UI for character selection
-		this.bg = new Fsprite({
+		var bg = new Fsprite({
 			canvas: util.div('characterSelection'),
 			img: package.data.UI.data.character_selection.pic,
 			wh: 'fit'
 		});
-		this.player = [];
+		player = [];
 		for( var i=0; i<2; i++)
 		{
 			//sprite & animator
 			var sp = new Fsprite({
 				canvas: util.div('characterSelection'),
-				img: this.img_list,
+				img: img_list,
 				wh: {x:sel.waiting.w,y:sel.waiting.h}
 			});
 			sp.set_x_y(sel.posx[i],sel.posy[i-i%4]);
@@ -8860,7 +8911,7 @@ function Manager(package)
 				textbox.push(box.el);
 			}
 			//
-			this.player.push({
+			player.push({
 				waiting:ani,
 				textbox:textbox,
 				box:sp,
@@ -8876,16 +8927,16 @@ function Manager(package)
 		//create UI for gameplay
 		if( util.div('pauseMessage'))
 		{
-			this.pause_mess = new Fsprite({
+			pause_mess = new Fsprite({
 				div: util.div('pauseMessage'),
 				img: package.data.UI.data.pause,
 				wh: 'fit'
 			});
-			this.pause_mess.hide();
+			pause_mess.hide();
 		}
 		if( util.div('panel'))
 		{
-			this.panel=[];
+			var panel=[];
 			for( var i=0; i<8; i++)
 			{
 				var pane = new Fsprite({
@@ -8894,51 +8945,74 @@ function Manager(package)
 					wh: 'fit'
 				});
 				pane.set_x_y(package.data.UI.data.panel.pane_width*(i%4), package.data.UI.data.panel.pane_height*Math.floor(i/4));
-				this.panel.push(pane);
+				panel.push(pane);
 			}
 		}
 		//
 		this.match_end();
 		this.start_match();
 	}
+	this.frame=function()
+	{
+		for( var i in player)
+		{
+			switch (player[i].step)
+			{
+				case 0:
+					if( step===0)
+						player[i].waiting.next_frame();
+					player[i].textbox[0].style.color = sel.text.color[t%2];
+				break;
+				case 1:
+					player[i].textbox[1].style.color = sel.text.color[t%2];
+				break;
+				case 2:
+					player[i].textbox[2].style.color = sel.text.color[t%2];
+				break;
+			}
+		}
+		control0.fetch();
+		control1.fetch();
+		t++;
+	}
 	this.key=function(i,key)
 	{
 		if( key==='att')
 		{
-			if( this.step===0)
+			if( step===0)
 			{
-				this.player[i].type='human';
-				this.player[i].step++;
+				player[i].type='human';
+				player[i].step++;
 			}
-			else if( this.step===1)
+			else if( step===1)
 			{
-				if( this.player[i].type!=='human')
+				if( player[i].type!=='human')
 					return;
-				i = this.setting_computer;
-				this.player[i].step++;
+				i = setting_computer;
+				player[i].step++;
 			}
 
 			var finished=true;
-			for( var k=0; k<this.player.length; k++)
-				finished = finished && (this.player[k].step===0||this.player[k].step===3);
-			if( finished && this.step===0)
+			for( var k=0; k<player.length; k++)
+				finished = finished && (player[k].step===0||player[k].step===3);
+			if( finished && step===0)
 			{
-				if( this.player[0].step===3 && this.player[1].step===3)
+				if( player[0].step===3 && player[1].step===3)
 				{
 					this.start_match();
 				}
 				else
 				{
-					this.setting_computer = (this.player[0].step===3?1:0);
-					i = this.setting_computer;
-					this.player[i].step = 0;
-					this.player[i].type = 'computer';
-					this.step++;
+					setting_computer = (player[0].step===3?1:0);
+					i = setting_computer;
+					player[i].step = 0;
+					player[i].type = 'computer';
+					step++;
 				}
 			}
-			else if( finished && this.step===1)
+			else if( finished && step===1)
 			{
-				if( this.player[0].step===3 && this.player[1].step===3)
+				if( player[0].step===3 && player[1].step===3)
 				{
 					this.start_match();
 				}
@@ -8946,118 +9020,118 @@ function Manager(package)
 		}
 		if( key==='jump')
 		{
-			if( this.step===1)
+			if( step===1)
 			{
-				if( this.player[i].type!=='human')
+				if( player[i].type!=='human')
 					return;
-				i = this.setting_computer;
-				if( this.player[i].step>0)
-					this.player[i].step--;
+				i = setting_computer;
+				if( player[i].step>0)
+					player[i].step--;
 			}
-			if( this.step===0)
+			if( step===0)
 			{
-				if( this.player[i].step>0)
-					this.player[i].step--;
+				if( player[i].step>0)
+					player[i].step--;
 			}
 		}
 		if( key==='right')
 		{
-			if( this.step===1)
+			if( step===1)
 			{
-				if( this.player[i].type!=='human')
+				if( player[i].type!=='human')
 					return;
-				i = this.setting_computer;
+				i = setting_computer;
 			}
-			if( this.player[i].step===1)
+			if( player[i].step===1)
 			{
-				this.player[i].selected++;
-				if( this.player[i].selected>=this.char_list.length)
-					this.player[i].selected = 0;
+				player[i].selected++;
+				if( player[i].selected>=char_list.length)
+					player[i].selected = 0;
 			}
-			if( this.player[i].step===0 && this.player[i].type==='computer')
+			if( player[i].step===0 && player[i].type==='computer')
 			{
-				this.player[i].selected_AI++;
-				if( this.player[i].selected_AI>=this.AI_list.length)
-					this.player[i].selected_AI = 0;
+				player[i].selected_AI++;
+				if( player[i].selected_AI>=AI_list.length)
+					player[i].selected_AI = 0;
 			}
 		}
 		if( key==='left')
 		{
-			if( this.step===1)
+			if( step===1)
 			{
-				if( this.player[i].type!=='human')
+				if( player[i].type!=='human')
 					return;
-				i = this.setting_computer;
+				i = setting_computer;
 			}
-			if( this.player[i].step===1)
+			if( player[i].step===1)
 			{
-				this.player[i].selected--;
-				if( this.player[i].selected<0)
-					this.player[i].selected = this.char_list.length-1;
+				player[i].selected--;
+				if( player[i].selected<0)
+					player[i].selected = char_list.length-1;
 			}
-			if( this.player[i].step===0 && this.player[i].type==='computer')
+			if( player[i].step===0 && player[i].type==='computer')
 			{
-				this.player[i].selected_AI--;
-				if( this.player[i].selected_AI<0)
-					this.player[i].selected_AI = this.AI_list.length-1;
+				player[i].selected_AI--;
+				if( player[i].selected_AI<0)
+					player[i].selected_AI = AI_list.length-1;
 			}
 		}
 		this.show_step(i);
 	}
 	this.show_step=function(i)
 	{
-		if( this.step===0)
+		if( step===0)
 		{
-			switch (this.player[i].step)
+			switch (player[i].step)
 			{
 				case 0:
-					this.player[i].textbox[0].innerHTML = 'Join?';
-					this.player[i].textbox[1].innerHTML = '';
-					this.player[i].textbox[2].innerHTML = '';
-					this.player[i].box.switch_img('waiting');
+					player[i].textbox[0].innerHTML = 'Join?';
+					player[i].textbox[1].innerHTML = '';
+					player[i].textbox[2].innerHTML = '';
+					player[i].box.switch_img('waiting');
 				break;
 				case 1:
-					this.player[i].textbox[0].style.color = sel.text.color[2];
-					this.player[i].textbox[0].innerHTML = this.player[i].name;
-					this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
-					this.player[i].textbox[2].innerHTML = '';
-					this.player[i].waiting.rewind();
-					this.player[i].box.switch_img(this.player[i].selected);
+					player[i].textbox[0].style.color = sel.text.color[2];
+					player[i].textbox[0].innerHTML = player[i].name;
+					player[i].textbox[1].innerHTML = char_list[player[i].selected].name;
+					player[i].textbox[2].innerHTML = '';
+					player[i].waiting.rewind();
+					player[i].box.switch_img(player[i].selected);
 				break;
 				case 2:
-					this.player[i].textbox[1].style.color = sel.text.color[2];
-					this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
+					player[i].textbox[1].style.color = sel.text.color[2];
+					player[i].textbox[2].innerHTML = 'Team '+player[i].team;
 				break;
 				case 3:
-					this.player[i].textbox[2].style.color = sel.text.color[2];
+					player[i].textbox[2].style.color = sel.text.color[2];
 				break;
 			}
 		}
-		else if( this.step===1)
+		else if( step===1)
 		{
-			i = this.setting_computer;
-			switch (this.player[i].step)
+			i = setting_computer;
+			switch (player[i].step)
 			{
 				case 0:
-					this.player[i].name = this.AI_list[this.player[i].selected_AI].name;
-					this.player[i].textbox[0].innerHTML = this.player[i].name;
-					this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
-					this.player[i].textbox[2].innerHTML = '';
-					this.player[i].waiting.rewind();
-					this.player[i].box.switch_img(this.player[i].selected);
+					player[i].name = AI_list[player[i].selected_AI].name;
+					player[i].textbox[0].innerHTML = player[i].name;
+					player[i].textbox[1].innerHTML = char_list[player[i].selected].name;
+					player[i].textbox[2].innerHTML = '';
+					player[i].waiting.rewind();
+					player[i].box.switch_img(player[i].selected);
 				break;
 				case 1:
-					this.player[i].textbox[0].style.color = sel.text.color[2];
-					this.player[i].textbox[1].innerHTML = this.char_list[this.player[i].selected].name;
-					this.player[i].textbox[2].innerHTML = '';
-					this.player[i].box.switch_img(this.player[i].selected);
+					player[i].textbox[0].style.color = sel.text.color[2];
+					player[i].textbox[1].innerHTML = char_list[player[i].selected].name;
+					player[i].textbox[2].innerHTML = '';
+					player[i].box.switch_img(player[i].selected);
 				break;
 				case 2:
-					this.player[i].textbox[1].style.color = sel.text.color[2];
-					this.player[i].textbox[2].innerHTML = 'Team '+this.player[i].team;
+					player[i].textbox[1].style.color = sel.text.color[2];
+					player[i].textbox[2].innerHTML = 'Team '+player[i].team;
 				break;
 				case 3:
-					this.player[i].textbox[2].style.color = sel.text.color[2];
+					player[i].textbox[2].style.color = sel.text.color[2];
 				break;
 			}
 		}
@@ -9071,25 +9145,24 @@ function Manager(package)
 
 		//create timer
 		var This=this;
-		this.step = 0;
-		this.seltimer = setInterval(function(){This.frame();},1000/12);
+		step = 0;
+		timer = setInterval(function(){This.frame();},1000/12);
 		//create controller listener
-		control0.sync=false;
-		control1.sync=false;
 		control0.child=[{
 			key:function(K,D){if(D)This.key(0,K);}
 		}];
 		control1.child=[{
 			key:function(K,D){if(D)This.key(1,K);}
 		}];
+		functionkey_control.child=[];
 		//reset
-		this.step = 0;
-		for( var i=0; i<this.player.length; i++)
+		step = 0;
+		for( var i=0; i<player.length; i++)
 		{
-			this.player[i].step = 0;
-			this.player[i].type = 'human';
-			this.player[i].name = i+1;
-			this.player[i].team = i+1;
+			player[i].step = 0;
+			player[i].type = 'human';
+			player[i].name = i+1;
+			player[i].team = i+1;
 			this.show_step(i);
 		}
 	}
@@ -9097,18 +9170,16 @@ function Manager(package)
 	{
 		hide(util.div('characterSelection'));
 		show(util.div('gameplay'));
-		if( functionkey_control.type==='touch')
+		if( functionkey_control.restart)
 			functionkey_control.restart();
 
-		clearInterval(this.seltimer);
+		clearInterval(timer);
 
-		control0.sync=true;
-		control1.sync=true;
 		control0.child=[];
 		control1.child=[];
 		functionkey_control.child=[];
 
-		this.match = new Match
+		var match = new Match
 		({
 			manager: this,
 			stage: util.div('floor'),
@@ -9117,19 +9188,19 @@ function Manager(package)
 			package: package
 		});
 
-		this.match.create
+		match.create
 		({
 			player:
 			[
 				{
-					controller: this.player[0].type==='human'?control0:this.AI_list[this.player[0].selected_AI].data,
-					datanum: this.player[0].selected,
-					team: this.player[0].team
+					controller: player[0].type==='human'?control0:AI_list[player[0].selected_AI].data,
+					datanum: player[0].selected,
+					team: player[0].team
 				},
 				{
-					controller: this.player[1].type==='human'?control1:this.AI_list[this.player[1].selected_AI].data,
-					datanum: this.player[1].selected,
-					team: this.player[1].team
+					controller: player[1].type==='human'?control1:AI_list[player[1].selected_AI].data,
+					datanum: player[1].selected,
+					team: player[1].team
 				}
 			],
 			control: functionkey_control,
@@ -9138,7 +9209,7 @@ function Manager(package)
 				weapon: true
 			},
 			background: {id:1},
-			pause_mess: this.pause_mess
+			pause_mess: pause_mess
 		});
 	}
 	//constructor
@@ -9165,7 +9236,7 @@ define('F.core/css!LF/application.css', ['F.core/css-embed'],
 function(embed)
 {
 	embed(
-	'.LFroot {  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:100;  /*  border-left:1px solid #676767;  border-top:1px solid #676767;  background-image:url("http://docs.google.com/document/d/1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ/pubimage?id=1DcPRilw9xEn8tET09rWet3o7x12rD-SkM5SoVJO1nnQ&image_id=19OMD_e2s9wHU52R1ofJIjUrpOP_KI3jKUh9n");  background-repeat:no-repeat;  background-position:-50px 0px;  background-size: contain; */ } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 20px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus {  position:absolute;  left:0; top:106px;  width:100%; height:22px;  line-height:22px;  background:#000;  z-index:3; } .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5;     transition:left 0.5s; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; } .characterSelection {  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:10; } .characterSelectionTextBox {  font-family:Helvetica,sans;  font-weight:bold;  font-size:13px;  color:#FFF;  text-align:center;     transition:color 0.1s; }'
+	'.LFroot {  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none;  overflow: hidden;  position:absolute;  left:0px; top:0px;  width:100%; height:100%; } .LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px;  border-left:none;  border-right:none; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:100; } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 50px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7;  background:#555; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .maximized .background {  overflow:visible; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .maximized .floorHolder {  overflow:visible; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus {  position:absolute;  left:0; top:106px;  width:100%; height:22px;  line-height:22px;  z-index:3; } .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .maximized .backgroundScroll {  display:none; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5;     transition:left 0.5s; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; } .characterSelection {  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:10; } .characterSelectionTextBox {  font-family:Helvetica,sans;  font-weight:bold;  font-size:13px;  color:#FFF;  text-align:center;     transition:color 0.1s; }'
 	);
 	return true;
 });
@@ -9230,6 +9301,24 @@ util,global){
 	{
 		if( UI_state.maximized)
 		{
+			if( window.innerWidth/window.innerHeight > 15/9)
+			{
+				if( !UI_state.wide)
+				{
+					UI_state.wide=true;
+					util.div().classList.add('wideWindow');
+					//double arrow symbol '&#8622;&#8596;'
+				}
+			}
+			else
+			{
+				if( UI_state.wide)
+				{
+					UI_state.wide=false;
+					util.div().classList.remove('wideWindow');
+				}
+			}
+			
 			if( typeof ratio!=='number')
 			{
 				var ratioh = window.innerHeight/parseInt(window.getComputedStyle(util.container,null).getPropertyValue('height')),
@@ -9265,26 +9354,6 @@ util,global){
 				util.div('maximizeButton').onclick();
 			}
 		}
-		if( UI_state.maximized)
-		{
-			if( window.innerWidth/window.innerHeight > 15/9)
-			{
-				if( !UI_state.wide)
-				{
-					UI_state.wide=true;
-					util.div().classList.add('wideWindow');
-					//double arrow symbol '&#8622;&#8596;'
-				}
-			}
-			else
-			{
-				if( UI_state.wide)
-				{
-					UI_state.wide=false;
-					util.div().classList.remove('wideWindow');
-				}
-			}
-		}
 		resizer();
 	}
 	util.div('maximizeButton').onclick=function()
@@ -9295,19 +9364,22 @@ util,global){
 			{
 				UI_state.maximized=true;
 				this.firstChild.innerHTML='&#9724;';
-				if( util.div('backgroundScroll'))
-					hide(util.div('backgroundScroll'));
+				util.div().classList.add('maximized');
 				document.body.style.background='#888';
 				resizer();
 			}
 			else
 			{
 				this.firstChild.innerHTML='&#9723;';
-				if( util.div('backgroundScroll'))
-					show(util.div('backgroundScroll'));
+				util.div().classList.remove('maximized');
 				document.body.style.background='';
 				resizer(1);
 				UI_state.maximized=false;
+				if( UI_state.wide)
+				{
+					UI_state.wide=false;
+					util.div().classList.remove('wideWindow');
+				}
 			}
 		}
 	}
