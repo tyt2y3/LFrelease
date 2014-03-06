@@ -37,22 +37,6 @@ css: function (filename)
 	head.appendChild(link);
 },
 
-/**
- * util.double_delegate
- * double delegate a function
- [ method ]
- * [reference](http://roberthahn.ca/articles/2007/02/02/how-to-use-window-onload-the-right-way/)
- */
-double_delegate: function (function1, function2)
-{
-	return function() {
-	if (function1)
-		function1.apply(this,Array.prototype.slice.call(arguments));
-	if (function2)
-		function2.apply(this,Array.prototype.slice.call(arguments));
-	}
-},
-
 /*\
  * util.make_array
  [ method ]
@@ -1220,15 +1204,44 @@ sprite.prototype.switch_img=function(name)
  - x (number)
  - y (number)
 \*/
-sprite.prototype.set_img_xy=function(P)
+if( support.css3dtransform && !sp_masterconfig.disable_css3dtransform)
 {
-	this.img[this.cur_img].style.left= P.x+'px';
-	this.img[this.cur_img].style.top= P.y+'px';
+	sprite.prototype.set_img_xy=function(P)
+	{
+		this.x=P.x; this.y=P.y;
+		this.img[this.cur_img].style[support.css3dtransform]= 'translate3d('+P.x+'px,'+P.y+'px, 0px) ';
+	}
+	sprite.prototype.set_img_x_y=function(x,y)
+	{
+		this.x=x; this.y=y;
+		this.img[this.cur_img].style[support.css3dtransform]= 'translate3d('+x+'px,'+y+'px, 0px) ';
+	}
 }
-sprite.prototype.set_img_x_y=function(x,y)
+else if( support.css2dtransform && !sp_masterconfig.disable_css2dtransform)
 {
-	this.img[this.cur_img].style.left= x+'px';
-	this.img[this.cur_img].style.top= y+'px';
+	sprite.prototype.set_img_xy=function(P)
+	{
+		this.x=P.x; this.y=P.y;
+		this.img[this.cur_img].style[support.css2dtransform]= 'translate('+P.x+'px,'+P.y+'px) ';
+	}
+	sprite.prototype.set_img_x_y=function(x,y)
+	{
+		this.x=x; this.y=y;
+		this.img[this.cur_img].style[support.css2dtransform]= 'translate('+x+'px,'+y+'px) ';
+	}
+}
+else
+{
+	sprite.prototype.set_img_xy=function(P)
+	{
+		this.img[this.cur_img].style.left= P.x+'px';
+		this.img[this.cur_img].style.top= P.y+'px';
+	}
+	sprite.prototype.set_img_x_y=function(x,y)
+	{
+		this.img[this.cur_img].style.left= x+'px';
+		this.img[this.cur_img].style.top= y+'px';
+	}
 }
 
 sprite.prototype.draw_to_canvas=function(canvas)
@@ -1436,14 +1449,21 @@ util.setup_resourcemap=function(package,Fsprite)
 //return the parameters passed by location
 util.location_parameters=function()
 {
-	var param = window.location.href.split('/').pop();
+	var param = window.location.href.split('/').pop(),
+		query = {};
 	if( param.indexOf('?')!==-1)
 	{
 		var param = param.split('?').pop().split('&');
 		for( var i=0; i<param.length; i++)
-			param[i] = param[i].split('=');
-		return param;
+		{
+			pp = param[i].split('=');
+			if( pp.length===1)
+				query[pp[0]] = 1;
+			if( pp.length===2)
+				query[pp[0]] = pp[1];
+		}
 	}
+	return query;
 }
 
 return util;
