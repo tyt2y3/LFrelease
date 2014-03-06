@@ -4078,6 +4078,8 @@ define('LF/network',['LF/util','F.core/network','LF/third_party/peer'],function(
 			local.push(this);
 			this.control = control;
 			this.type = control.type;
+			if( control.config)
+				this.config = control.config;
 			control.child.push(this);
 			control.sync=true;
 			for( var i in control.state)
@@ -4333,7 +4335,7 @@ controller.prototype.type = 'keyboard';
 controller.prototype.key=function(e,down) //interface to master_controller
 {
 	var caught=0;
-	for(var I in this.state)
+	for(var I in this.config)
 	{
 		if ( this.keycode[I]==e)
 		{
@@ -4362,7 +4364,7 @@ controller.prototype.key=function(e,down) //interface to master_controller
 \*/
 controller.prototype.clear_states=function()
 {
-	for(var I in this.state)
+	for(var I in this.config)
 		this.state[I]=0;
 }
 /*\
@@ -11315,7 +11317,7 @@ function keychanger (append_at, controllers)
 
 		var i=1;
 		if( con.type==='keyboard')
-			for( var I in con.state)
+			for( var I in con.config)
 			{
 				row[i]=create_at(table, 'tr');
 				add_pair(row[i],I);
@@ -11325,7 +11327,7 @@ function keychanger (append_at, controllers)
 		function add_pair(R,name)
 		{
 			add_cell(R,name);
-			var cell=add_cell(R, con.state[name]);
+			var cell=add_cell(R, con.config[name]);
 			cell.style.cursor='pointer';
 			var target;
 			cell.onclick=function()
@@ -11343,7 +11345,7 @@ function keychanger (append_at, controllers)
 				if (!e) e = window.event;
 				var value=e.keyCode;
 				cell.innerHTML=Fcontroller.keycode_to_keyname(value);
-				con.state[name]=Fcontroller.keycode_to_keyname(value);
+				con.config[name]=Fcontroller.keycode_to_keyname(value);
 				con.keycode[name]=value;
 				target.style.backgroundColor= '#EEE';
 				change_active=false;
