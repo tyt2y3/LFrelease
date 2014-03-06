@@ -1548,11 +1548,12 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 	
 	if( param.pvp && param.id1 && param.id2)
 	{
-		Fnetwork.setup_peer('http://localhost:8080',
-				param.pvp==='active',
-				param.id1,
-				param.id2
-			);
+		Fnetwork.setup_peer(
+			location.origin==='http://tyt2y3.github.io'?'http://flf-lodge.herokuapp.com':'http://localhost:8080',
+			param.pvp==='active',
+			param.id1,
+			param.id2
+		);
 		return {
 			controller:ncon,
 			setInterval:set_interval,
