@@ -1279,7 +1279,7 @@ function define_module()
 		{
 			var newtime = new Date().getTime(),
 				diff = newtime-lasttime;
-			if( diff > target_interval-10) //too slow
+			if( diff > target_interval-5) //too slow
 			{
 				var result = timer_callback(buffer.time,buffer.data,next_frame);
 				lasttime = newtime;
@@ -1291,7 +1291,7 @@ function define_module()
 		}
 	}
 	
-	function setup_peer(host,active,id1,id2)
+	function setup_peer(host,active,id1,id2,key)
 	{
 		if( !id1 || !id2)
 		{
@@ -1301,7 +1301,7 @@ function define_module()
 		var once_open_only = false,
 			time = 0,
 			connected = {},
-			peer = new Peer(id1, {host:host,debug:3}),
+			peer = new Peer(id1, {host:host,debug:3,key:key||'flf'}),
 			conn; //connection
 		
 		function dataframe(time,data)
@@ -1546,13 +1546,22 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 		this.pre_buf.push([K,down]);
 	}
 	
+	var key, host = 'http://localhost:8080';
+	if( location.origin==='http://tyt2y3.github.io')
+		host = 'http://flf-lodge.herokuapp.com';
+	if( param.host==='peerjs')
+	{
+		host = '0.peerjs.com';
+		key = 'skrweclntxi27qfr';
+	}
+	
 	if( param.pvp && param.id1 && param.id2)
 	{
-		Fnetwork.setup_peer(
-			location.origin==='http://tyt2y3.github.io'?'http://flf-lodge.herokuapp.com':'http://localhost:8080',
-			param.pvp==='active',
-			param.id1,
-			param.id2
+		Fnetwork.setup_peer(host,
+				param.pvp==='active',
+				param.id1,
+				param.id2,
+				key
 		);
 		return {
 			controller:ncon,
