@@ -1491,12 +1491,22 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 		if( role==='remote' || role==='dual')
 		{
 			remote.push(this);
-			for( var i in control)
+			for( var i in this.state)
 				this.state[i] = 0;
 		}
 	}
 	ncon.prototype.clear_states=function()
 	{
+		var role=this.role;
+		if( role==='local' || role==='dual')
+		{
+			this.control.clear_states();
+		}
+		if( role==='remote')
+		{
+			for( var i in this.state)
+				this.state[i] = 0;
+		}
 	}
 	ncon.prototype.flush=function()
 	{
@@ -3785,7 +3795,6 @@ function ( Global, Sprite, Mech, AI, util, Fsprite, Futil)
 	{
 		this.sp.destroy();
 		this.shadow.remove();
-		//TODO: remove combo listener to controller
 	}
 
 	livingobject.prototype.log = function(mes)
@@ -5697,7 +5706,14 @@ function(livingobject, Global, Fcombodec, Futil, util)
 	character.prototype.type = 'character';
 	character.prototype.states = states;
 	character.prototype.states_switch_dir = states_switch_dir;
-
+	
+	character.prototype.destroy = function()
+	{
+		var $=this;
+		livingobject.prototype.destroy.call(this);
+		//(handled by manager.js) remove combo listener to controller
+	}
+	
 	//to emit a combo event
 	character.prototype.combo_update = function()
 	{		
@@ -8700,42 +8716,69 @@ Global)
 define('LF/keychanger',['F.core/controller'], function (Fcontroller)
 {
 
-var change_active=false;
-
-function keychanger (append_at, controllers)
+function keychanger (append_at, controls)
 {
-	append_at.style.textAlign='center';
-
-	for( var i=0; i<controllers.length; i++)
+	var brbr=create_at(append_at, 'br'),
+		table=create_at(append_at, 'table'),
+		row=[],
+		change_active=false;
+	
+	table.style.display='inline-block';
+	for( var i=0; i<9; i++)
+		row[i]=create_at(table, 'tr');
+	
+	for( var i=0; i<controls.length; i++)
+		new Control(controls[i], i);
+	
+	function Control(con, num)
 	{
-		add_player(controllers[i], i);
-	}
-
-	function add_player(con, num)
-	{
-		/*if( num!==0)
+		var This=this;
+		var head = add_cell(row[0],'player '+(num+1));
+		head.colSpan='2';
+		var type = add_cell(row[1],'');
+		type.colSpan='2';
+		if( con.role==='remote')
+			type.innerHTML = 'network';
+		else
+			type.innerHTML = con.type;
+		
+		/*this.switch_type=function(to_type)
 		{
-			var sep=create_at(append_at, 'div');
-			sep.style.float='left';
-			sep.innerHTML='&nbsp;&nbsp;&nbsp;&nbsp;';
+			if( manager.locked)
+				return;
+			if( !to_type)
+			{	//toggle
+				for( var i=0; i<controls.length; i++)
+				{
+					if( controls[i]===This)
+						continue;
+					if( controls[i].type.innerHTML==='touch')
+						return;
+				}
+				type.innerHTML = type.innerHTML==='keyboard'?'touch':'keyboard';
+			}
+			else
+			{	//switch to type
+				if( to_type!==type.innerHTML)
+					type.innerHTML = to_type;
+				else //same type, return
+					return;
+			}
+			if( type.innerHTML==='keyboard')
+				this.control = con;
+			else if( type.innerHTML==='touch')
+				this.control = touch;
+			for( var i=2; i<9; i++)
+				row[i].children[2*num-1].style.visibility=(type.innerHTML==='keyboard'?'visible':'hidden');
 		}*/
 
-		var table=create_at(append_at, 'table');
-		table.style.float='left';
-
-		var row=[];
-		row[0]=create_at(table, 'tr');
-		var head= add_cell(row[0],'player '+(num+1));
-		head.colSpan='2';
-
-		var i=1;
+		var i=2;
 		if( con.type==='keyboard')
 			for( var I in con.config)
-			{
-				row[i]=create_at(table, 'tr');
-				add_pair(row[i],I);
-				i++;
-			}
+				add_pair(row[i++],I);
+		else
+			for( var i=2; i<9; i++)
+				empty_pair(row[i]);
 
 		function add_pair(R,name)
 		{
@@ -8765,6 +8808,11 @@ function keychanger (append_at, controllers)
 				document.removeEventListener('keydown', keydown, true);
 			}
 		}
+		function empty_pair(R)
+		{
+			add_cell(R,'');
+			add_cell(R,'');
+		}
 	}
 
 	function create_at(parent, tag, id)
@@ -8780,11 +8828,6 @@ function keychanger (append_at, controllers)
 	{
 		var td = create_at(row, 'td')
 		td.innerHTML= content;
-		td.style.border="1px solid #AAA";
-		td.style.backgroundColor= "#EEE";
-		td.style.fontFamily="monospace";
-		td.style.width='40px';
-		td.style.textAlign='center';
 		return td;
 	}
 }
@@ -9223,14 +9266,7 @@ function Manager(package)
 		}
 
 		//key changer
-		var keychanger = util.div('keychanger');
-		hide(keychanger);
-		Keychanger(keychanger, [control0, control1]);
-		keychanger.style.backgroundColor='#FFF';
-		util.div('keychangerButton').onclick=function()
-		{
-			show_hide(keychanger);
-		}
+		Keychanger(util.div('keychanger'), [control0, control1]);
 
 		//prepare
 		char_list = util.select_from(package.data.object,{type:'character'});
@@ -9548,6 +9584,8 @@ function Manager(package)
 		control0.child=[];
 		control1.child=[];
 		functionkey_control.child=[];
+		control0.clear_states();
+		control1.clear_states();
 
 		var match = new Match
 		({
@@ -9606,7 +9644,7 @@ define('F.core/css!LF/application.css', ['F.core/css-embed'],
 function(embed)
 {
 	embed(
-	'.LFroot {  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none;  overflow: hidden;  position:absolute;  left:0px; top:0px;  width:100%; height:100%; } .LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px;  border-left:none;  border-right:none; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:100; } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 50px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:12px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .keychanger {  position:absolute;  right:0px;  top:30px;  border:1px solid #AAA;  font-size:12px;  padding:10px; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7;  background:#555; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .maximized .background {  overflow:visible; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .maximized .floorHolder {  overflow:visible; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus {  position:absolute;  left:0; top:106px;  width:100%; height:22px;  line-height:22px;  z-index:3; } .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .maximized .backgroundScroll {  display:none; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5;     transition:left 0.5s; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; } .characterSelection {  position:absolute;  left:0; top:0;  width:100%; height:100%;  z-index:10; } .characterSelectionTextBox {  font-family:Helvetica,sans;  font-weight:bold;  font-size:13px;  color:#FFF;  text-align:center;     transition:color 0.1s; }'
+	'.LFroot {  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none;  overflow: hidden;  position:absolute;  left:0px; top:0px;  width:100%; height:100%; } .LFcontainer {  position:absolute;  left:0px; top:0px;  font-family:Arial,sans;  font-size:18px; } .window {  position:relative;  width:794px;  height:550px;  border:5px solid #676767; } .window > div {  position:absolute;  left:0; top:0;  right:0; bottom:0; } .bgviewer .window {  height:400px; } .wideWindow .window {  height:422px;  border-left:none;  border-right:none; } .windowCaption {  position:relative;  top:0px;  width:804px; height:30px;  background:#676767;  z-index:100; } .windowCaptionTitle {  font-family:"Segoe UI",Arial,sans;  font-size:20px;  color:#FFF;  width:90%;  text-align:center;  padding:2px 0px 5px 50px;  text-shadow:0px 0px 5px #AAA; } .windowCaptionButtonBar {  position:absolute;  top:0px; right:0px;  height:100%;  -webkit-user-select: none;  -khtml-user-select: none;  -moz-user-select: none;  -ms-user-select: none;  user-select: none; } .windowCaptionButtonBar > * {  background:#1878ca;  /* blue:#1878ca, red:#c74f4f; */  float:right;  width:auto; height:85%;  padding:0 10px 0 10px;  margin-right:10px;  text-align:center;  text-decoration:none;  font-size:10px;  color:#FFF;  cursor:pointer; } .windowCaptionButtonBar > *:hover {  background:#248ce5; } .unisym {  font-family: Arial Unicode MS, FreeSerif, serif;  font-size: 18px; } .ProjectFbutton {  background:#7c547c; } .ProjectFbutton:hover {  background:#9d6e9d; } .gameplay {  z-index:1; } .panel {  position:absolute;  background:#000;  left:0; top:0;  width:100%; height:128px;  z-index:2; } .wideWindow .panel {  opacity:0.7;  background:#555; } .background {  position:absolute;  left:0; top:0;  width:100%; height:550px;  z-index:-1;  overflow:hidden; } .maximized .background {  overflow:visible; } .bgviewer .background, .wideWindow .background {  top:-128px; } .floorHolder {  position:absolute;  left:0; top:0;  width:100%; height:550px;  overflow:hidden;  z-index:1; } .maximized .floorHolder {  overflow:visible; } .bgviewer .floorHolder, .wideWindow .floorHolder {  top:-128px; } .floor {  position:absolute;  left:0; top:0;  width:1000px;  height:100%; } .topStatus {  position:absolute;  left:0; top:106px;  width:100%; height:22px;  line-height:22px;  z-index:3; } .bottomStatus {  position:absolute;  bottom:0px;  width:100%; height:22px;  line-height:22px;  background:#000;  text-align:right; } .fps {  float:left;  border:none;  background:none;  width:50px;  color:#FFF;  padding:0 5px 0 5px; } .footnote {  font-family:"MS PMincho",monospace;  font-size:12px;  text-shadow: 0px -1px 2px #666, 1px 0px 2px #666, 0px 2px 2px #666, -2px 0px 2px #666;  letter-spacing:2px;  color:#FFF; } .backgroundScroll {  position:absolute;  width:100%;  top:550px;  overflow-x:scroll;  overflow-y:hidden; } .maximized .backgroundScroll {  display:none; } .wideWindow .backgroundScroll {  top:422px; } .backgroundScrollChild {  position:absolute;  left:0; top:0;  height:1px; } .bgviewer .backgroundScroll {  top:400px;  z-index:10; } .windowMessageHolder {  position:absolute;  left:0; top:0;  width:100%; height:100%; } .windowMessageHolder div {  position:absolute;  left:0; top:0;  right:0; bottom:0;  margin:auto; } .errorMessage {  color:#F00;  height:20%;  text-align:center; } .touchControllerButton {  position:absolute;  border:2px solid rgba(170, 255, 255, 0.5);  display:table;  color:#FFF;  font-size:20px;  opacity:0.5;     transition:left 0.5s; } .touchControllerButton > span {  display:table-cell;  vertical-align:middle;  text-align:center; } .projectFmessage {  display:none; } .characterSelection {  z-index:2; } .settings {  z-index:3; } .keychanger {  position:absolute;  right:0;  font-size:12px;  text-align:center;  padding:10px;  background:#FFF; } .keychanger td {  border: 1px solid #AAA;  background: #EEE;  font-family: monospace;  width: 40px;  text-align: center; } .characterSelectionTextBox {  font-family:Helvetica,sans-serif;  font-weight:bold;  font-size:13px;  color:#FFF;  text-align:center;     transition:color 0.1s; }'
 	);
 	return true;
 });
@@ -9637,7 +9675,7 @@ function(Fsupport,
 package,Manager,
 util,global){
 
-	if (typeof console === "undefined"){
+	if (typeof console === 'undefined'){
 		console={};
 		console.log = function(){
 			return;
@@ -9763,7 +9801,13 @@ util,global){
 	}
 	window.addEventListener('resize', onresize, false);
 	onresize();
-
+	
+	hide(util.div('settings'));
+	util.div('settingsButton').onclick=function()
+	{
+		show_hide(util.div('settings'));
+	}
+	
 	//process parameters
 	var param = util.location_parameters();
 	if( param)
@@ -9796,6 +9840,10 @@ util,global){
 	function hide(div)
 	{
 		div.style.display='none';
+	}
+	function show_hide(div)
+	{
+		div.style.display= div.style.display===''?'none':'';
 	}
 
 	var manager = new Manager(package);
