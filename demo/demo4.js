@@ -1491,13 +1491,14 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 		if( role==='remote' || role==='dual')
 		{
 			remote.push(this);
-			for( var i in this.state)
-				this.state[i] = 0;
+			if( role==='remote')
+				for( var i in control)
+					this.state[i] = 0;
 		}
 	}
 	ncon.prototype.clear_states=function()
 	{
-		var role=this.role;
+		/*var role=this.role;
 		if( role==='local' || role==='dual')
 		{
 			this.control.clear_states();
@@ -1506,7 +1507,7 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 		{
 			for( var i in this.state)
 				this.state[i] = 0;
-		}
+		}*/
 	}
 	ncon.prototype.flush=function()
 	{
@@ -1561,7 +1562,7 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 		host = 'http://flf-lodge.herokuapp.com';
 	if( param.host==='peerjs')
 	{
-		host = '0.peerjs.com';
+		host = 'http://0.peerjs.com';
 		key = 'skrweclntxi27qfr';
 	}
 	
@@ -8742,36 +8743,6 @@ function keychanger (append_at, controls)
 		else
 			type.innerHTML = con.type;
 		
-		/*this.switch_type=function(to_type)
-		{
-			if( manager.locked)
-				return;
-			if( !to_type)
-			{	//toggle
-				for( var i=0; i<controls.length; i++)
-				{
-					if( controls[i]===This)
-						continue;
-					if( controls[i].type.innerHTML==='touch')
-						return;
-				}
-				type.innerHTML = type.innerHTML==='keyboard'?'touch':'keyboard';
-			}
-			else
-			{	//switch to type
-				if( to_type!==type.innerHTML)
-					type.innerHTML = to_type;
-				else //same type, return
-					return;
-			}
-			if( type.innerHTML==='keyboard')
-				this.control = con;
-			else if( type.innerHTML==='touch')
-				this.control = touch;
-			for( var i=2; i<9; i++)
-				row[i].children[2*num-1].style.visibility=(type.innerHTML==='keyboard'?'visible':'hidden');
-		}*/
-
 		var i=2;
 		if( con.type==='keyboard')
 			for( var I in con.config)
@@ -9586,8 +9557,8 @@ function Manager(package)
 		control0.child=[];
 		control1.child=[];
 		functionkey_control.child=[];
-		control0.clear_states();
-		control1.clear_states();
+		//control0.clear_states();
+		//control1.clear_states();
 
 		var match = new Match
 		({
