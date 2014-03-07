@@ -1,3 +1,4 @@
+
 define('F.core/support',[],function()
 {
 	var support = {};
@@ -1560,7 +1561,7 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 		host = 'http://flf-lodge.herokuapp.com';
 	if( param.host==='peerjs')
 	{
-		host = 'http://0.peerjs.com';
+		host = '0.peerjs.com';
 		key = 'skrweclntxi27qfr';
 	}
 	
@@ -9224,6 +9225,8 @@ function Manager(package)
 		//touch support
 		var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
 		if( support_touch) hide(util.div('windowCaptionButtonBar'));
+		if( param.touch && param.touch==='false')
+			support_touch = false;
 		
 		//controllers
 		if( param.pvp)
