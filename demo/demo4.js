@@ -9195,9 +9195,9 @@ function Manager(package)
 		
 		//touch support
 		var support_touch = 'ontouchstart' in window || navigator.msMaxTouchPoints;
-		if( support_touch) hide(util.div('windowCaptionButtonBar'));
 		if( param.touch && param.touch==='false')
 			support_touch = false;
+		if( support_touch) hide(util.div('windowCaptionButtonBar'));
 		
 		//controllers
 		if( param.pvp)
