@@ -1483,6 +1483,8 @@ define('LF/network',['LF/util','F.core/network','LFrelease/third_party/peer'],fu
 			this.type = control.type;
 			if( control.config)
 				this.config = control.config;
+			if( control.keycode)
+				this.keycode = control.keycode;
 			control.child.push(this);
 			control.sync=true;
 			for( var i in control.state)
