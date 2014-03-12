@@ -8630,7 +8630,7 @@ Global)
 	match.prototype.new_randomseed=function()
 	{
 		var rand = new Random();
-		rand.seed_bytime();
+		rand.seed(12345678);
 		return rand;
 	}
 
