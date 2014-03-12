@@ -640,14 +640,13 @@ define(function()
 			current_phase = 0,
 			current_phase_count = 0,
 			current_stage = 0,
+			game_objects = match.scene.live,
 			bg_width = match.background.width,
 			bg_zwidth1 = match.background.zboundary[0],
 			bg_zwidth2 = match.background.zboundary[1],
 			mode = 0, //0: VS, 1: Stage, 2: 1on1, 3: 2on2, 4: Battle, 5: Demo, 6: Playback, 7: Quit
-			difficulty = 0; //-1: CRAZY!, 0: difficult, 1: normal, 2: easy
-
-		var target;
-		var game_objects = match.scene.live;
+			difficulty = 0, //-1: CRAZY!, 0: difficult, 1: normal, 2: easy
+			target;
 
 		function rand(i)
 		{
@@ -664,8 +663,10 @@ define(function()
 		}
 </textarea>
 <textarea id='export2'>
+
 		this.TU = id;
 	}
+	AIscript.type = AIscript.prototype.type = 'AIscript';
 	return AIscript;
 });
 </textarea>
@@ -785,20 +786,20 @@ function convert_AIscript_to_js(V)
 		[/.itrs\[([^\[\]]+)\]\.ps\.([a-zA-Z0-9]+)/g,'.itrs[$1].$2'],
 		[/game.exists\[([^\[\]]+)\]/g,'game_objects[$1]'],
 		[/for[ \n\t]*\([ \n\t]*var[ \n\t]*([a-zA-Z0-9]+)[ \n\t]*=[ \n\t]*0[ \n\t]*;[ \n\t]*[a-zA-Z0-9]+[ \n\t]*<[ \n\t]*400[ \n\t]*;.+\)/g,'for (var $1 in game_objects)'],
-		[/([^a-zA-Z0-9])D\(\)/g,"$1controller.keypress('def')"],
-		[/([^a-zA-Z0-9])D\((.+)\)/g,"$1controller.keypress('def',$2)"],
-		[/([^a-zA-Z0-9])J\(\)/g,"$1controller.keypress('jump')"],
-		[/([^a-zA-Z0-9])J\((.+)\)/g,"$1controller.keypress('jump',$2)"],
-		[/([^a-zA-Z0-9])A\(\)/g,"$1controller.keypress('att')"],
-		[/([^a-zA-Z0-9])A\((.+)\)/g,"$1controller.keypress('att',$2)"],
-		[/([^a-zA-Z0-9])up\(\)/g,"$1controller.keypress('up')"],
-		[/([^a-zA-Z0-9])up\((.+)\)/g,"$1controller.keypress('up',$2)"],
-		[/([^a-zA-Z0-9])down\(\)/g,"$1controller.keypress('down')"],
-		[/([^a-zA-Z0-9])down\((.+)\)/g,"$1controller.keypress('down',$2)"],
-		[/([^a-zA-Z0-9])left\(\)/g,"$1controller.keypress('left')"],
-		[/([^a-zA-Z0-9])left\((.+)\)/g,"$1controller.keypress('left',$2)"],
-		[/([^a-zA-Z0-9])right\(\)/g,"$1controller.keypress('right')"],
-		[/([^a-zA-Z0-9])right\((.+)\)/g,"$1controller.keypress('right',$2)"]
+		[/([^_a-zA-Z0-9])D\(\)/g,"$1controller.keypress('def')"],
+		[/([^_a-zA-Z0-9])D\((.+)\)/g,"$1controller.keypress('def',$2)"],
+		[/([^_a-zA-Z0-9])J\(\)/g,"$1controller.keypress('jump')"],
+		[/([^_a-zA-Z0-9])J\((.+)\)/g,"$1controller.keypress('jump',$2)"],
+		[/([^_a-zA-Z0-9])A\(\)/g,"$1controller.keypress('att')"],
+		[/([^_a-zA-Z0-9])A\((.+)\)/g,"$1controller.keypress('att',$2)"],
+		[/([^_a-zA-Z0-9])up\(\)/g,"$1controller.keypress('up')"],
+		[/([^_a-zA-Z0-9])up\((.+)\)/g,"$1controller.keypress('up',$2)"],
+		[/([^_a-zA-Z0-9])down\(\)/g,"$1controller.keypress('down')"],
+		[/([^_a-zA-Z0-9])down\((.+)\)/g,"$1controller.keypress('down',$2)"],
+		[/([^_a-zA-Z0-9])left\(\)/g,"$1controller.keypress('left')"],
+		[/([^_a-zA-Z0-9])left\((.+)\)/g,"$1controller.keypress('left',$2)"],
+		[/([^_a-zA-Z0-9])right\(\)/g,"$1controller.keypress('right')"],
+		[/([^_a-zA-Z0-9])right\((.+)\)/g,"$1controller.keypress('right',$2)"]
 	];
 	var p = 0; //parse point
 	var out = '';
@@ -824,11 +825,11 @@ function convert_AIscript_to_js(V)
 		{
 			var pat = replacements[i][0];
 			pat = pat.replace(/\./g,'\\.');
-			pat = pat+'([^a-zA-Z0-9])';
+			pat = pat+'([^_a-zA-Z0-9])';
 			if( pat.indexOf('\\.')===0)
 				pat = '([^])'+pat;
 			else
-				pat = '([^a-zA-Z0-9])'+pat;
+				pat = '([^_a-zA-Z0-9])'+pat;
 			var reg = new RegExp(pat, 'g');
 			V = V.replace(reg,'$1'+replacements[i][1]+'$2');
 		}
